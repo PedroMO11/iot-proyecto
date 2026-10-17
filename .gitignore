@@ -1,0 +1,5 @@
+firmware/**/config.h
+__pycache__/
+.venv/
+*.pyc
+.pio/
