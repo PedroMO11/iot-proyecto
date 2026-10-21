@@ -9,7 +9,7 @@
 const char* WIFI_SSID = "TU_RED";
 const char* WIFI_PASS = "TU_CLAVE";
 const char* MQTT_HOST = "192.168.1.100";               // IP de la laptop
-const char* PARLANTE  = "NOMBRE EXACTO DEL PARLANTE";
+const char* PARLANTE  = "ULT WEAR";                    // audífonos Sony ULT WEAR
 
 const char* T_CMD    = "asistivo/nodo1/cmd";
 const char* T_PING   = "asistivo/nodo1/ping";

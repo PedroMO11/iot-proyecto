@@ -2,7 +2,7 @@
 #include "BluetoothA2DPSource.h"
 #include "frases.h"
 
-const char* PARLANTE = "NOMBRE EXACTO DEL PARLANTE";   // <-- cambiar
+const char* PARLANTE = "ULT WEAR";   // audífonos Sony ULT WEAR (nombre Bluetooth exacto)
 
 BluetoothA2DPSource a2dp;
 
