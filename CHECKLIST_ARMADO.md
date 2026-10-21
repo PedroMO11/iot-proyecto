@@ -149,7 +149,7 @@ Sketch: [firmware/pruebas/02a_a2dp_solo/](firmware/pruebas/02a_a2dp_solo/02a_a2d
 - ESP32: [firmware/pruebas/02b_coexistencia/](firmware/pruebas/02b_coexistencia/02b_coexistencia.ino). Además de las frases, responde en `asistivo/nodo1/pong` cada mensaje que le llega a `asistivo/nodo1/ping`.
 - Laptop: [laptop/pruebas/latencia_mqtt.py](laptop/pruebas/latencia_mqtt.py) manda 30 pings (uno por segundo) y calcula la latencia.
 - [ ] La carpeta del sketch tiene el `frases.h` real (paso 1.4).
-- [ ] Completar `WIFI_SSID`, `WIFI_PASS`, `MQTT_HOST` (IP de la laptop) y `PARLANTE`. **No subir la contraseña real** al repositorio.
+- [ ] Copiar [firmware/nodo_asistivo/config.example.h](firmware/nodo_asistivo/config.example.h) como `config.h` dentro de la carpeta del sketch y completar `WIFI_SSID`, `WIFI_PASS`, `MQTT_HOST` (IP de la laptop) y `PARLANTE`. `config.h` está en `.gitignore`: **no se sube**.
 
 ### Checklist
 - [x] El Monitor Serie muestra **WiFi OK**, **MQTT OK** y **Parlante CONECTADO**.

@@ -5,11 +5,14 @@
 #include "BluetoothA2DPSource.h"
 #include "frases.h"
 
-// ---- Configuración (NO subir contraseñas reales al repositorio) ----
-const char* WIFI_SSID = "TU_RED";
-const char* WIFI_PASS = "TU_CLAVE";
-const char* MQTT_HOST = "192.168.1.100";               // IP de la laptop
-const char* PARLANTE  = "ULT WEAR";                    // audífonos Sony ULT WEAR
+// ---- Configuración: WiFi, IP del broker y parlante ----
+// Copiar firmware/nodo_asistivo/config.example.h como config.h en esta carpeta y completarlo.
+// config.h está en .gitignore: NUNCA subirlo (tiene la contraseña del WiFi).
+#if __has_include("config.h")
+#include "config.h"
+#else
+#error "Falta config.h: copiar firmware/nodo_asistivo/config.example.h como config.h en esta carpeta"
+#endif
 
 const char* T_CMD    = "asistivo/nodo1/cmd";
 const char* T_PING   = "asistivo/nodo1/ping";
