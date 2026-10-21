@@ -158,8 +158,8 @@ Sketch: [firmware/pruebas/02a_a2dp_solo/](firmware/pruebas/02a_a2dp_solo/02a_a2d
 - [x] **Latencia sin audio:** correr `python laptop/pruebas/latencia_mqtt.py` sin reproducir nada. Anotar el promedio y el máximo en la sección 6.
 - [x] **Latencia con audio:** correr el script otra vez mientras se mandan frases seguidas (escribir 1, 2, 3… en el Monitor Serie). Anotar en la sección 6.
 - [ ] Durante el audio: ¿se corta la voz? ¿se cae el MQTT? ¿se reinicia el ESP32? Anotarlo.
-- [ ] Desconectar el ESP32 → en `mosquitto_sub` aparece `offline` en pocos segundos.
-- [ ] Dejarlo funcionando **10 minutos** mandando frases cada tanto. ¿Sigue estable?
+- [x] Desconectar el ESP32 → en `mosquitto_sub` aparece `offline` en pocos segundos. *(Con keepalive de 5 s: 3,6 s y 6 s en dos pruebas; el máximo teórico es ~7,5 s. Al reconectar el USB publica `online` en ~2 s y recupera los audífonos en ~20 s sin modo emparejamiento.)*
+- [ ] Dejarlo funcionando **10 minutos** mandando frases cada tanto. ¿Sigue estable? *(Parcial: 3,6 min estable, sin reinicios ni caídas. Falta la prueba completa.)*
 - [ ] ✅ **Aprobado si:** las frases suenan sin cortes, se reciben 30/30 pings y la latencia de ida es menor a 300 ms incluso con audio.
 - [ ] ❌ **Si falla:** avisar al grupo y pasar al plan B (la laptop reproduce el audio). Si el ESP32 se reinicia al arrancar, probar invirtiendo el orden en `setup()` (primero `a2dp.start`, luego el WiFi).
 
@@ -234,9 +234,9 @@ Sketch: [firmware/pruebas/03_escaner_i2c/](firmware/pruebas/03_escaner_i2c/03_es
 | **−** (negro) | GND |
 | **A** (azul) | GPIO34 |
 
-- [ ] Placa del electrodo conectada a la placa de señal por el cable de **3,5 mm**.
-- [ ] Cable Gravity conectado según la tabla.
-- [ ] **Laptop a batería, desenchufada del cargador** (el cargador mete ruido de 60 Hz).
+- [x] Placa del electrodo conectada a la placa de señal por el cable de **3,5 mm**.
+- [x] Cable Gravity conectado según la tabla.
+- [x] **Laptop a batería, desenchufada del cargador** (el cargador mete ruido de 60 Hz).
 
 **Colocación del electrodo sobre el masetero:**
 - [ ] Apretar los dientes con un dedo en la mejilla, entre la oreja y el ángulo de la mandíbula: el músculo que "salta" es el masetero.
@@ -250,6 +250,8 @@ Sketch: [firmware/pruebas/03_escaner_i2c/](firmware/pruebas/03_escaner_i2c/03_es
 - [ ] Al **apretar los dientes**, la envolvente sube claramente (varias veces el nivel de reposo).
 - [ ] **Hablar, tragar y mover la cabeza** sube poco o nada comparado con el apretón. Si sube mucho, reacomodar el electrodo.
 - [ ] Anotar los niveles de reposo y de apretón en la sección 6.
+
+> **Si la señal sale plana en 0:** puede que el GPIO34 esté **saturado** (4095, ~3,17 V fijos), y al restarle el nivel medio queda en 0. En reposo debe marcar **~1,5 V con ruido**. Revisar que el azul esté en **D34** y el rojo en **3V3**, que los **3 contactos** del electrodo toquen la piel y que el cable de 3,5 mm esté metido hasta el fondo. *(Pasó el 2026-10-21 y se resolvió revisando cables y electrodo.)*
 
 **Sketch 2: detectar confirmar y cancelar.** [firmware/pruebas/03c_emg_eventos/](firmware/pruebas/03c_emg_eventos/03c_emg_eventos.ino): calibra 5 s en reposo (umbral μ + 3σ), confirma con contracciones de 100 ms a 1 s, cancela con más de 1 s y aplica un periodo refractario de 700 ms. Esos valores son constantes al inicio del sketch.
 
@@ -321,10 +323,10 @@ Completar a medida que se prueba. Sirve como evidencia para el informe final.
 | Coexistencia: latencia de ida **sin** audio | 2026-10-21 | ✅ promedio · ⚠️ máximo | Promedio 108 / mediana 86 / p90 154 / máximo 497 ms; 2/30 > 300 ms. Hotspot del celular. Datos: `docs/resultados/` |
 | Coexistencia: latencia de ida **con** audio | 2026-10-21 | ✅ promedio · ⚠️ máximo | Promedio 113 / mediana 97 / p90 207 / máximo 440 ms; 2/30 > 300 ms. 22 frases por MQTT durante la prueba, sin reinicios ni caídas |
 | Coexistencia: pings recibidos | 2026-10-21 | 30/30 | Con y sin audio |
-| Coexistencia: estable 10 min | | | |
+| Coexistencia: estable 10 min | 2026-10-21 | ⏸ parcial | 3,6 min: 214/214 pings, 11 frases, sin reinicios ni `offline`. Ida: media 139 / p90 289 / máximo 868 ms; 19/214 > 300 ms |
 | MPU6050: grados cómodos de inclinación | | | Adelante / lado: |
 | MAX30102 vs oxímetro de referencia | | | BPM: / SpO₂: |
-| EMG: envolvente en reposo vs apretón | | | |
+| EMG: envolvente en reposo vs apretón | 2026-10-21 | ✅ antebrazo · ⬜ masetero | **Antebrazo** (flexores): reposo ~11 (σ 1,2), puños 300–420 cuentas (~30×). Simulando `03c_emg_eventos` sobre la grabación, el umbral μ+20 ≈ 31 da 2 falsos en reposo; con ~60 no hay falsos. Gráfica y datos en `docs/resultados/` |
 | EMG: aciertos en 10 apretones | | /10 | Meta ≥ 9 |
 | EMG: falsos en 5 min de reposo | | | Meta ≤ 1 |
 | Relé: lógica (HIGH o LOW = encendido) | | | |
