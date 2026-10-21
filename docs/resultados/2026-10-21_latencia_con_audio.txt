@@ -1,0 +1,32 @@
+ida y vuelta: 41 ms
+ida y vuelta: 151 ms
+ida y vuelta: 65 ms
+ida y vuelta: 101 ms
+ida y vuelta: 273 ms
+ida y vuelta: 447 ms
+ida y vuelta: 167 ms
+ida y vuelta: 186 ms
+ida y vuelta: 221 ms
+ida y vuelta: 231 ms
+ida y vuelta: 50 ms
+ida y vuelta: 116 ms
+ida y vuelta: 649 ms
+ida y vuelta: 115 ms
+ida y vuelta: 205 ms
+ida y vuelta: 881 ms
+ida y vuelta: 84 ms
+ida y vuelta: 314 ms
+ida y vuelta: 391 ms
+ida y vuelta: 414 ms
+ida y vuelta: 276 ms
+ida y vuelta: 201 ms
+ida y vuelta: 22 ms
+ida y vuelta: 50 ms
+ida y vuelta: 166 ms
+ida y vuelta: 221 ms
+ida y vuelta: 273 ms
+ida y vuelta: 40 ms
+ida y vuelta: 257 ms
+ida y vuelta: 167 ms
+
+Recibidos 30/30 | promedio 226 ms | máximo 881 ms | latencia de ida aprox. 113 ms

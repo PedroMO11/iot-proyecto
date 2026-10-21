@@ -124,12 +124,12 @@ Sketch: [firmware/pruebas/02a_a2dp_solo/](firmware/pruebas/02a_a2dp_solo/02a_a2d
 - [ ] Cambiar `PARLANTE` por el nombre exacto del parlante.
 
 ### Checklist
-- [ ] Compila y sube sin error. Si dice *"Sketch too big"*, revisar el **Partition Scheme** del paso 0.
-- [ ] El Monitor Serie (115200 baudios) muestra **"Parlante CONECTADO"** en menos de 30 s.
-- [ ] Al escribir `1` (Enter) suena "Tengo hambre".
-- [ ] Las 6 frases suenan completas, sin cortes ni velocidad rara.
-- [ ] Ajustar `set_volume` si suena muy fuerte o saturado.
-- [ ] Al apagar y prender el parlante, el ESP32 se reconecta solo.
+- [x] Compila y sube sin error. Si dice *"Sketch too big"*, revisar el **Partition Scheme** del paso 0.
+- [x] El Monitor Serie (115200 baudios) muestra **"Parlante CONECTADO"** en menos de 30 s.
+- [x] Al escribir `1` (Enter) suena "Tengo hambre".
+- [x] Las 6 frases suenan completas, sin cortes ni velocidad rara.
+- [x] Ajustar `set_volume` si suena muy fuerte o saturado. *(Quedó en 127 + ganancia digital ×2,5: los WAV TTS llegan con pico ~12 000 de 32 767.)*
+- [x] Al apagar y prender el parlante, el ESP32 se reconecta solo. *(ESP32-A2DP 1.8.11 no reintenta sola tras una desconexión: el sketch llama a `reconnect()` cada 10 s y activa `set_auto_reconnect(true)`, que guarda la dirección en la NVS. Tras el primer emparejamiento ya no hace falta el modo emparejamiento.)*
 
 **Si no conecta:** revisar el nombre exacto, que el parlante no esté enlazado a otro equipo y que esté a menos de 2 m. Si la voz suena muy rápida o muy lenta, el WAV no está a 16 000 Hz: repetir el paso 1.3.
 
@@ -152,11 +152,11 @@ Sketch: [firmware/pruebas/02a_a2dp_solo/](firmware/pruebas/02a_a2dp_solo/02a_a2d
 - [ ] Completar `WIFI_SSID`, `WIFI_PASS`, `MQTT_HOST` (IP de la laptop) y `PARLANTE`. **No subir la contraseña real** al repositorio.
 
 ### Checklist
-- [ ] El Monitor Serie muestra **WiFi OK**, **MQTT OK** y **Parlante CONECTADO**.
-- [ ] En otra terminal: `mosquitto_sub -t "asistivo/#" -v` muestra `asistivo/nodo1/estado online`.
-- [ ] Frase por MQTT: `mosquitto_pub -t asistivo/nodo1/cmd -q 1 -m "{\"accion\":\"frase\",\"id\":1}"` → suena "Tengo hambre". En Mac/Linux se pueden usar comillas simples: `-m '{"accion":"frase","id":1}'`.
-- [ ] **Latencia sin audio:** correr `python laptop/pruebas/latencia_mqtt.py` sin reproducir nada. Anotar el promedio y el máximo en la sección 6.
-- [ ] **Latencia con audio:** correr el script otra vez mientras se mandan frases seguidas (escribir 1, 2, 3… en el Monitor Serie). Anotar en la sección 6.
+- [x] El Monitor Serie muestra **WiFi OK**, **MQTT OK** y **Parlante CONECTADO**.
+- [x] En otra terminal: `mosquitto_sub -t "asistivo/#" -v` muestra `asistivo/nodo1/estado online`.
+- [x] Frase por MQTT: `mosquitto_pub -t asistivo/nodo1/cmd -q 1 -m "{\"accion\":\"frase\",\"id\":1}"` → suena "Tengo hambre". En Mac/Linux se pueden usar comillas simples: `-m '{"accion":"frase","id":1}'`.
+- [x] **Latencia sin audio:** correr `python laptop/pruebas/latencia_mqtt.py` sin reproducir nada. Anotar el promedio y el máximo en la sección 6.
+- [x] **Latencia con audio:** correr el script otra vez mientras se mandan frases seguidas (escribir 1, 2, 3… en el Monitor Serie). Anotar en la sección 6.
 - [ ] Durante el audio: ¿se corta la voz? ¿se cae el MQTT? ¿se reinicia el ESP32? Anotarlo.
 - [ ] Desconectar el ESP32 → en `mosquitto_sub` aparece `offline` en pocos segundos.
 - [ ] Dejarlo funcionando **10 minutos** mandando frases cada tanto. ¿Sigue estable?
@@ -316,11 +316,11 @@ Completar a medida que se prueba. Sirve como evidencia para el informe final.
 
 | Prueba | Fecha | Resultado | Notas |
 |---|---|---|---|
-| A2DP solo: conexión al parlante | | | Tiempo hasta conectar: |
-| A2DP: las 6 frases suenan bien | | | |
-| Coexistencia: latencia de ida **sin** audio | | | Promedio / máximo (ms): |
-| Coexistencia: latencia de ida **con** audio | | | Promedio / máximo (ms): |
-| Coexistencia: pings recibidos | | /30 | |
+| A2DP solo: conexión al parlante | 2026-10-21 | ✅ | Sony ULT WEAR (`"ULT WEAR"`). Conecta en modo emparejamiento y se reconecta solo tras recargar el firmware |
+| A2DP: las 6 frases suenan bien | 2026-10-21 | ✅ | Audio TTS de ttsmaker. Volumen bien con `set_volume(127)` + ganancia ×2,5 |
+| Coexistencia: latencia de ida **sin** audio | 2026-10-21 | ✅ promedio · ⚠️ máximo | Promedio 108 / mediana 86 / p90 154 / máximo 497 ms; 2/30 > 300 ms. Hotspot del celular. Datos: `docs/resultados/` |
+| Coexistencia: latencia de ida **con** audio | 2026-10-21 | ✅ promedio · ⚠️ máximo | Promedio 113 / mediana 97 / p90 207 / máximo 440 ms; 2/30 > 300 ms. 22 frases por MQTT durante la prueba, sin reinicios ni caídas |
+| Coexistencia: pings recibidos | 2026-10-21 | 30/30 | Con y sin audio |
 | Coexistencia: estable 10 min | | | |
 | MPU6050: grados cómodos de inclinación | | | Adelante / lado: |
 | MAX30102 vs oxímetro de referencia | | | BPM: / SpO₂: |

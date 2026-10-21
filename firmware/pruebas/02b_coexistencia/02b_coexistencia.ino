@@ -24,6 +24,11 @@ BluetoothA2DPSource a2dp;
 volatile int fraseActual = -1;
 volatile float posicion = 0;
 const float PASO = 16000.0f / 44100.0f;
+const float GANANCIA = 2.5f;            // los WAV llegan con pico ~12000/32767; x2,5 no satura
+
+// ESP32-A2DP 1.8.11 no reintenta sola tras una desconexión: se queda quieta.
+// Cada RECONEXION_MS sin parlante se vuelve a llamar a la última dirección conocida.
+const uint32_t RECONEXION_MS = 10000;
 
 int32_t get_data_frames(Frame* frame, int32_t frame_count) {
   for (int i = 0; i < frame_count; i++) {
@@ -31,7 +36,10 @@ int32_t get_data_frames(Frame* frame, int32_t frame_count) {
     int f = fraseActual;
     if (f >= 0) {
       uint32_t idx = (uint32_t)posicion;
-      if (idx < FRASES_LEN[f]) { muestra = FRASES[f][idx]; posicion += PASO; }
+      if (idx < FRASES_LEN[f]) {
+        muestra = constrain(FRASES[f][idx] * GANANCIA, -32768.0f, 32767.0f);
+        posicion += PASO;
+      }
       else fraseActual = -1;
     }
     frame[i].channel1 = muestra;
@@ -93,9 +101,11 @@ void setup() {
 
   mqtt.setServer(MQTT_HOST, 1883);
   mqtt.setCallback(alRecibir);
+  mqtt.setKeepAlive(5);                 // el broker publica el LWT tras ~7,5 s sin noticias (por defecto, ~22 s)
 
   a2dp.set_data_callback_in_frames(get_data_frames);
-  a2dp.set_volume(80);
+  a2dp.set_volume(127);                 // 0 a 127 (máximo)
+  a2dp.set_auto_reconnect(true);        // guarda la dirección en la NVS y la usa al arrancar
   a2dp.start(PARLANTE);
 }
 
@@ -103,10 +113,19 @@ void loop() {
   conectarMqtt();
   mqtt.loop();
 
-  static bool btAntes = false;
-  if (a2dp.is_connected() != btAntes) {
-    btAntes = a2dp.is_connected();
-    Serial.println(btAntes ? "Parlante CONECTADO" : "Parlante desconectado");
+  static bool btAntes = false, huboConexion = false;
+  static uint32_t ultimoIntento = 0;
+  bool bt = a2dp.is_connected();
+  if (bt != btAntes) {
+    btAntes = bt;
+    if (bt) huboConexion = true;
+    ultimoIntento = millis();
+    Serial.println(bt ? "Parlante CONECTADO" : "Parlante desconectado");
+  }
+  if (!bt && huboConexion && millis() - ultimoIntento >= RECONEXION_MS) {
+    ultimoIntento = millis();
+    Serial.println("Reintentando conexión con el parlante...");
+    a2dp.reconnect();
   }
   if (Serial.available()) {
     char c = Serial.read();
