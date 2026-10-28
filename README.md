@@ -37,7 +37,7 @@ Un prototipo de bajo costo para que una persona con movilidad reducida severa y 
  ───────                      ───────────────────                 ──────────
  Sensor EMG (masetero) ──ADC1 GPIO34──┐                    ┌──Bluetooth A2DP──> Parlante BT
  MPU6050 (vincha)      ──I2C 0x68─────┤  Adquisición y     ├──GPIO26──> Relé ──> Foco LED 12 V
- MAX30102 (dedo)       ──I2C 0x57─────┘  procesamiento     └──GPIO27──> 2N2222 ──> Buzzer
+ MAX30102 (dedo)       ──I2C 0x57─────┘  procesamiento     └──GPIO27──> Buzzer
                                                │
                                         WiFi 2,4 GHz (MQTT)
                                                │
@@ -62,7 +62,7 @@ Un prototipo de bajo costo para que una persona con movilidad reducida severa y 
 | MAX30102 | Pulso y SpO₂ | I2C 0x57. Lecturas referenciales; no es un dispositivo médico. |
 | Parlante Bluetooth | Voz | Cualquiera que acepte A2DP |
 | Relé 1 canal optoacoplado (bobina 5 V) | Foco LED 12 V | Se activa con 3,3 V |
-| Buzzer activo 5 V + transistor 2N2222 | Alerta al cuidador | |
+| Buzzer activo de 2 patas | Alerta al cuidador | Directo al GPIO27, sin transistor: suena bien a 3,3 V |
 | Laptop | Broker, visión, menú, dashboard | |
 
 ### 3.1 Sensor EMG: dos opciones posibles
@@ -89,8 +89,8 @@ Conexión de baterías en la opción A: el + de la batería 1 va a +Vs; el − d
 | GPIO34 (ADC1) | Salida del EMG (por el divisor en la opción A) |
 | GPIO21 (SDA) / GPIO22 (SCL) | Bus I2C compartido por el MPU6050 y el MAX30102 |
 | GPIO26 | Entrada IN del relé |
-| GPIO27 | Base del 2N2222 del buzzer (con resistencia de unos 1 kΩ) |
-| VIN (5 V del USB) | VCC del relé y del buzzer |
+| GPIO27 | (+) del buzzer (pata larga); su (−) va a GND |
+| VIN (5 V del USB) | VCC del relé |
 | 3V3 | VCC del MPU6050 y del MAX30102 (y del EMG en la opción B) |
 | GND | Tierra común para **todo** |
 

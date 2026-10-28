@@ -1,4 +1,4 @@
-// 02b_coexistencia.ino : WiFi + MQTT + Bluetooth A2DP al mismo tiempo
+// 02b_coexistencia.ino : WiFi + MQTT + Bluetooth A2DP al mismo tiempo, con relé y buzzer por MQTT
 #include <WiFi.h>
 #include <PubSubClient.h>
 #include <ArduinoJson.h>
@@ -18,6 +18,10 @@ const char* T_CMD    = "asistivo/nodo1/cmd";
 const char* T_PING   = "asistivo/nodo1/ping";
 const char* T_PONG   = "asistivo/nodo1/pong";
 const char* T_ESTADO = "asistivo/nodo1/estado";
+
+const int PIN_RELE   = 26;
+const int PIN_BUZZER = 27;              // buzzer activo directo al GPIO (suena bien a 3,3 V)
+const uint32_t ALERTA_MS = 2000;
 
 WiFiClient wifiClient;
 PubSubClient mqtt(wifiClient);
@@ -59,6 +63,24 @@ void reproducir(int id) {
   Serial.printf("Frase %d\n", id);
 }
 
+// ---- Actuadores ----
+bool luz = false;
+bool alertaActiva = false;
+uint32_t inicioAlerta = 0;
+
+void conmutarLuz() {
+  luz = !luz;
+  digitalWrite(PIN_RELE, luz ? RELE_ENCENDIDO : !RELE_ENCENDIDO);
+  Serial.printf("Luz %s\n", luz ? "ENCENDIDA" : "APAGADA");
+}
+
+void alerta() {                         // el loop apaga el buzzer tras ALERTA_MS, sin bloquear
+  digitalWrite(PIN_BUZZER, HIGH);
+  alertaActiva = true;
+  inicioAlerta = millis();
+  Serial.println("Alerta: buzzer ON");
+}
+
 // ---- MQTT ----
 void alRecibir(char* topic, byte* payload, unsigned int len) {
   char msg[128];                                       // copiar: el buffer de PubSubClient se reutiliza
@@ -72,7 +94,14 @@ void alRecibir(char* topic, byte* payload, unsigned int len) {
   }
   JsonDocument doc;
   if (deserializeJson(doc, msg)) { Serial.println("JSON inválido"); return; }
-  if (doc["accion"] == "frase") reproducir(doc["id"] | 0);
+  if (doc["accion"] == "frase") {
+    int id = doc["id"] | 0;
+    reproducir(id);
+    if (id == 4) conmutarLuz();         // "Enciende la luz"
+    if (id == 5) alerta();              // "Llamar al cuidador"
+  }
+  else if (doc["accion"] == "luz") conmutarLuz();     // por ahora solo "estado":"toggle"
+  else if (doc["accion"] == "alerta") alerta();
 }
 
 void conectarMqtt() {
@@ -93,6 +122,10 @@ void conectarMqtt() {
 
 void setup() {
   Serial.begin(115200);
+  pinMode(PIN_RELE, OUTPUT);
+  digitalWrite(PIN_RELE, !RELE_ENCENDIDO);
+  pinMode(PIN_BUZZER, OUTPUT);
+  digitalWrite(PIN_BUZZER, LOW);
 
   WiFi.mode(WIFI_STA);
   WiFi.begin(WIFI_SSID, WIFI_PASS);
@@ -130,9 +163,16 @@ void loop() {
     Serial.println("Reintentando conexión con el parlante...");
     a2dp.reconnect();
   }
+  if (alertaActiva && millis() - inicioAlerta >= ALERTA_MS) {
+    digitalWrite(PIN_BUZZER, LOW);
+    alertaActiva = false;
+    Serial.println("Alerta: buzzer OFF");
+  }
   if (Serial.available()) {
     char c = Serial.read();
     if (c >= '1' && c <= '9') reproducir(c - '0');
+    if (c == 'a') alerta();
+    if (c == 'l') conmutarLuz();
   }
   delay(5);
 }

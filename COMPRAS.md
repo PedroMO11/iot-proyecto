@@ -9,12 +9,11 @@ Lo que falta para terminar el prototipo. Marcar cada casilla al comprarlo y hace
 - [ ] **3 resistencias de 1 kΩ** (bandas marrón – negro – rojo).
 
 **Para qué:**
-1. **Buzzer:** el ESP32 (D27) no puede encenderlo solo. El transistor conmuta el − del buzzer a GND (CHECKLIST, sección 5.2). El kit no traía transistor; el que parecía uno es un **LM35DZ** (sensor de temperatura).
+1. ~~**Buzzer**~~: ya no hace falta. Suena bien directo a D27 (CHECKLIST, sección 5.2). El kit no traía transistor; el que parecía uno es un **LM35DZ** (sensor de temperatura).
 2. **Relé:** el módulo JQC3F-05VDC-C es activo en LOW y no se apaga con 3,3 V. Ahora funciona provisionalmente con su VCC en 3V3, pero la bobina es de 5 V y queda justa. Con un transistor que lleve IN a GND, el módulo vuelve a 5 V (CHECKLIST, sección 5.1).
 
 > **Ojo con el orden de las patas** (cara plana hacia uno, patas abajo): 2N2222A, PN2222A, S8050 y 2N3904 = **E – B – C**; BC547 = **C – B – E**; C1815 = **E – C – B**. Leer el texto impreso antes de montarlo.
 
-- [ ] *(Opcional)* 1 diodo **1N4148**, en paralelo con el buzzer (raya hacia el +).
 
 ### Algo que el relé encienda (frase 4: «Enciende la luz»)
 Un relé que solo hace clic no actúa sobre el mundo físico; en la demo tiene que encender algo. **Elegir una opción:**
