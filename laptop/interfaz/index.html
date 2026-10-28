@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Comunicador asistivo</title>
+  <link rel="stylesheet" href="interfaz.css">
+</head>
+<body>
+  <header class="barra">
+    <span id="estado-broker" class="pastilla mal">Broker: desconectado</span>
+    <span id="estado-nodo" class="pastilla mal">Nodo: sin datos</span>
+    <span id="estado-fuente" class="pastilla">Cursor: —</span>
+    <span id="estado-modo" class="pastilla modo">Modo: uso</span>
+  </header>
+
+  <div id="aviso" class="aviso oculto"></div>
+
+  <main id="menu" class="menu" aria-label="Menú de frases"></main>
+
+  <div id="toast" class="toast oculto" role="status" aria-live="assertive"></div>
+
+  <footer class="ayuda">
+    <span><kbd>←↑→↓</kbd> mover</span>
+    <span><kbd>Enter</kbd> confirmar</span>
+    <span><kbd>Esc</kbd> cancelar</span>
+    <span><kbd>1</kbd>–<kbd>6</kbd> ir a la frase</span>
+    <span><kbd>M</kbd> modo uso / prueba / reposo</span>
+    <span><kbd>V</kbd> mirada on/off</span>
+    <span><kbd>F</kbd> pantalla completa</span>
+  </footer>
+
+  <script src="../web/config.js"></script>
+  <script src="../web/mqtt-ws.js"></script>
+  <script src="interfaz.js"></script>
+</body>
+</html>

@@ -1,0 +1,74 @@
+:root {
+  --fondo: #f4f6f9;
+  --tarjeta: #ffffff;
+  --texto: #18202b;
+  --tenue: #637083;
+  --linea: #e1e6ed;
+  --bien: #1e8e4f;
+  --bien-fondo: #e3f5ea;
+  --mal: #c0392b;
+  --mal-fondo: #fbe6e3;
+  --neutro-fondo: #eceff3;
+  --bpm: #d64545;
+  --spo2: #2f6fd6;
+  --lat: #7a4fd0;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --fondo: #0f141a; --tarjeta: #18202a; --texto: #e8edf3; --tenue: #93a1b3; --linea: #2a3542;
+    --bien: #5fd394; --bien-fondo: #173326; --mal: #ff8a7a; --mal-fondo: #3d1d1a; --neutro-fondo: #222c38;
+    --bpm: #ff7676; --spo2: #6ea2ff; --lat: #b18cff;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; padding: 20px; background: var(--fondo); color: var(--texto);
+  font-family: "Inter", "Noto Sans", system-ui, sans-serif; font-size: 15px;
+}
+h1 { margin: 0; font-size: 24px; }
+h2 { margin: 0 0 8px; font-size: 14px; font-weight: 600; color: var(--tenue); text-transform: uppercase; letter-spacing: .04em; }
+.sub { margin: 2px 0 0; color: var(--tenue); }
+code { font-size: 13px; }
+.oculto { display: none !important; }
+
+.cabecera { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; }
+.estados { display: flex; gap: 8px; flex-wrap: wrap; }
+.pastilla { padding: 4px 12px; border-radius: 999px; background: var(--neutro-fondo); color: var(--tenue); font-size: 13px; font-weight: 600; }
+.pastilla.bien { background: var(--bien-fondo); color: var(--bien); }
+.pastilla.mal { background: var(--mal-fondo); color: var(--mal); }
+
+.alerta { margin-bottom: 16px; padding: 14px 18px; border-radius: 12px; background: var(--mal); color: #fff; font-size: 18px; font-weight: 700; }
+
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px; margin-bottom: 14px; }
+.kpi { position: relative; background: var(--tarjeta); border: 1px solid var(--linea); border-radius: 14px; padding: 14px 16px; }
+.kpi .valor { margin: 2px 0; font-size: 34px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.kpi .valor small { font-size: 16px; font-weight: 600; color: var(--tenue); }
+.kpi .detalle { margin: 0; color: var(--tenue); font-size: 13px; }
+.kpi .meta { display: inline-block; margin-top: 8px; padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; background: var(--neutro-fondo); color: var(--tenue); }
+.kpi .meta.bien { background: var(--bien-fondo); color: var(--bien); }
+.kpi .meta.mal { background: var(--mal-fondo); color: var(--mal); }
+.kpi.alerta-kpi { border-color: var(--mal); box-shadow: 0 0 0 2px var(--mal) inset; }
+
+.graficos, .tablas { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 14px; margin-bottom: 14px; }
+.tarjeta { background: var(--tarjeta); border: 1px solid var(--linea); border-radius: 14px; padding: 14px 16px; min-width: 0; }
+canvas { width: 100%; height: 220px; display: block; }
+.leyenda { display: flex; gap: 16px; font-size: 13px; color: var(--tenue); margin-bottom: 6px; }
+.c-bpm { color: var(--bpm); } .c-spo2 { color: var(--spo2); } .c-lat { color: var(--lat); } .c-meta { color: var(--mal); }
+
+.datos { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; margin: 0 0 14px; }
+.datos dt { color: var(--tenue); }
+.datos dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; }
+.botones { display: flex; gap: 8px; flex-wrap: wrap; }
+button { font: inherit; font-weight: 600; padding: 8px 14px; border-radius: 10px; border: 1px solid var(--spo2); background: var(--spo2); color: #fff; cursor: pointer; }
+button.secundario { background: transparent; color: var(--texto); border-color: var(--linea); }
+
+.registro { max-height: 330px; overflow: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { text-align: left; color: var(--tenue); font-weight: 600; border-bottom: 1px solid var(--linea); padding: 4px 6px; position: sticky; top: 0; background: var(--tarjeta); }
+td { border-bottom: 1px solid var(--linea); padding: 4px 6px; font-variant-numeric: tabular-nums; }
+.pie { color: var(--tenue); font-size: 12px; text-align: center; margin-top: 6px; }
+
+@media (max-width: 520px) {
+  body { padding: 12px; }
+  .graficos, .tablas { grid-template-columns: 1fr; }
+}

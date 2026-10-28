@@ -1,0 +1,87 @@
+/* Interfaz del paciente: alto contraste, letras grandes, sin distracciones */
+:root {
+  --fondo: #10151c;
+  --casilla: #1d2633;
+  --texto: #f3f6fa;
+  --tenue: #8a97a8;
+  --cursor: #ffd23f;
+  --ok: #2ecc71;
+  --cancelar: #e74c3c;
+  --objetivo: #4aa3ff;
+  --borde: 10px;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body {
+  background: var(--fondo);
+  color: var(--texto);
+  font-family: "Inter", "Noto Sans", system-ui, sans-serif;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.barra { display: flex; gap: 10px; padding: 10px 16px; flex-wrap: wrap; }
+.pastilla {
+  font-size: 15px; padding: 4px 12px; border-radius: 999px;
+  background: #253141; color: var(--tenue);
+}
+.pastilla.bien { background: #173d2a; color: #8ff0b6; }
+.pastilla.mal { background: #4a1f1f; color: #ffb3a8; }
+.pastilla.modo { margin-left: auto; color: var(--texto); }
+
+.aviso {
+  margin: 0 16px; padding: 12px 18px; border-radius: 12px;
+  font-size: clamp(20px, 2.6vw, 34px); font-weight: 600; text-align: center;
+  background: #12304f; color: #cfe6ff;
+}
+.aviso.reposo { background: #3b3216; color: #ffe9a8; }
+.oculto { display: none !important; }
+
+.menu {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(2, 1fr);
+  gap: 18px;
+  padding: 16px;
+  min-height: 0;
+}
+.casilla {
+  position: relative;
+  background: var(--casilla);
+  border-radius: 24px;
+  border: var(--borde) solid transparent;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 1.5vh;
+  transition: border-color .12s, transform .12s, background .2s;
+  min-height: 0;
+}
+.casilla .icono { font-size: clamp(48px, 9vh, 120px); line-height: 1; }
+.casilla .texto { font-size: clamp(28px, 4.6vh, 64px); font-weight: 700; text-align: center; padding: 0 12px; }
+.casilla .numero { position: absolute; top: 12px; left: 18px; font-size: 20px; color: var(--tenue); }
+.casilla.cursor { border-color: var(--cursor); transform: scale(1.02); background: #283547; }
+.casilla.objetivo::after {
+  content: "OBJETIVO"; position: absolute; top: 12px; right: 18px;
+  font-size: 16px; font-weight: 700; color: var(--objetivo); letter-spacing: .08em;
+}
+.casilla.objetivo { box-shadow: inset 0 0 0 4px var(--objetivo); }
+.casilla.enviada { background: var(--ok); }
+.casilla.cancelada { background: var(--cancelar); }
+
+.toast {
+  position: fixed; left: 50%; bottom: 70px; transform: translateX(-50%);
+  padding: 18px 34px; border-radius: 16px; font-size: clamp(24px, 3vw, 40px); font-weight: 700;
+  background: #0b0f14ee; border: 2px solid var(--tenue);
+}
+.toast.ok { border-color: var(--ok); }
+.toast.mal { border-color: var(--cancelar); }
+
+.ayuda {
+  display: flex; flex-wrap: wrap; gap: 18px; justify-content: center;
+  padding: 8px 16px 12px; font-size: 14px; color: var(--tenue);
+}
+kbd {
+  font-family: inherit; font-size: 12px; padding: 1px 6px; border-radius: 5px;
+  border: 1px solid #3a4656; background: #1a222d; color: var(--texto);
+}

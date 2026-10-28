@@ -284,9 +284,9 @@ Sketch: [firmware/pruebas/03_escaner_i2c/](firmware/pruebas/03_escaner_i2c/03_es
 
 Sketch: [firmware/pruebas/04a_rele/](firmware/pruebas/04a_rele/04a_rele.ino). Alterna el GPIO26 entre HIGH y LOW cada 2 s y lo imprime en el Monitor Serie.
 
-- [ ] **Sin carga** (solo el módulo): se escucha el "clic" y el LED del módulo cambia cada 2 s.
-- [ ] Anotar si el relé se activa con **HIGH** o con **LOW**. Muchos módulos se activan con LOW; en ese caso, en el código final "encender" es `LOW`.
-- [ ] Si el relé **nunca se apaga**, es un problema conocido de módulos de 5 V con lógica de 3,3 V. Soluciones: un módulo con jumper **JD-VCC**, o manejar IN con un transistor 2N2222 igual que el buzzer.
+- [x] **Sin carga** (solo el módulo): se escucha el "clic" y el LED del módulo cambia cada 2 s. *(Solo con VCC del módulo en **3V3**: ver abajo.)*
+- [x] Anotar si el relé se activa con **HIGH** o con **LOW**. Muchos módulos se activan con LOW; en ese caso, en el código final "encender" es `LOW`. *(**LOW**: con HIGH 1 s / LOW 4 s el LED verde quedó 4 s encendido. Coincide con `RELE_ENCENDIDO LOW` de `config.example.h`.)*
+- [x] Si el relé **nunca se apaga**, es un problema conocido de módulos de 5 V con lógica de 3,3 V. Soluciones: un módulo con jumper **JD-VCC**, o manejar IN con un transistor 2N2222 igual que el buzzer. *(Nos pasó el 2026-10-28: módulo JQC3F-05VDC-C de 3 pines IN/GND/VCC, sin jumpers; con VCC a 5 V el LED verde quedaba fijo. **Provisional:** VCC del módulo a **3V3** → conmuta. La bobina es de 5 V y a 3,3 V queda justa: la solución final es un **2N2222** que lleve IN a GND, con el módulo de nuevo a 5 V; en el código, la lógica se invierte.)*
 - [ ] Recién entonces conectar el **foco de 12 V** y la fuente. Nunca usar 220 V en este proyecto.
 - [ ] ✅ El foco prende y apaga cada 2 s.
 
@@ -302,7 +302,7 @@ Sketch: [firmware/pruebas/04a_rele/](firmware/pruebas/04a_rele/04a_rele.ino). Al
 
 Sketch: [firmware/pruebas/04b_buzzer/](firmware/pruebas/04b_buzzer/04b_buzzer.ino). Da 3 pitidos de 200 ms y espera 3 s.
 
-- [ ] ✅ Suenan 3 pitidos cada 3 s.
+- [ ] ✅ Suenan 3 pitidos cada 3 s. *(2026-10-28: el buzzer es **activo** (pitido continuo a 5 V directo). Falta el **transistor**: el kit no traía; comprar 2N2222A o S8050.)*
 - [ ] Si suena siempre: revisar las patas del transistor (colector y emisor invertidos).
 - [ ] Si no suena: revisar la polaridad del buzzer y que VIN esté conectado.
 
@@ -330,5 +330,5 @@ Completar a medida que se prueba. Sirve como evidencia para el informe final.
 | EMG: envolvente en reposo vs apretón | 2026-10-21 | ✅ antebrazo · ⬜ masetero | **Antebrazo** (flexores): reposo ~11 (σ 1,2), puños 300–420 cuentas (~30×). Simulando `03c_emg_eventos` sobre la grabación, el umbral μ+20 ≈ 31 da 2 falsos en reposo; con ~60 no hay falsos. Gráfica y datos en `docs/resultados/` |
 | EMG: aciertos en 10 apretones | | /10 | Meta ≥ 9 |
 | EMG: falsos en 5 min de reposo | | | Meta ≤ 1 |
-| Relé: lógica (HIGH o LOW = encendido) | | | |
-| Buzzer | | | |
+| Relé: lógica (HIGH o LOW = encendido) | 2026-10-28 | ✅ LOW | JQC3F-05VDC-C; conmuta solo con VCC del módulo a 3V3 (provisional, falta transistor). Sin carga de 12 V todavía |
+| Buzzer | 2026-10-28 | ⏳ | Activo, suena a 5 V directo. Falta el transistor para controlarlo desde D27 |

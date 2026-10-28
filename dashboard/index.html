@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Panel del cuidador</title>
+  <link rel="stylesheet" href="dashboard.css">
+</head>
+<body>
+  <header class="cabecera">
+    <div>
+      <h1>Panel del cuidador</h1>
+      <p class="sub">Comunicador asistivo · nodo <code id="nombre-nodo"></code></p>
+    </div>
+    <div class="estados">
+      <span id="p-broker" class="pastilla mal">Broker: desconectado</span>
+      <span id="p-nodo" class="pastilla">Nodo: sin datos</span>
+      <span id="p-interfaz" class="pastilla">Interfaz: sin datos</span>
+      <span id="p-luz" class="pastilla oculto">Luz: —</span>
+    </div>
+  </header>
+
+  <div id="alerta" class="alerta oculto" role="alert"></div>
+
+  <section class="kpis">
+    <article class="kpi" id="k-bpm">
+      <h2>Pulso</h2><p class="valor">—</p><p class="detalle">promedio de 10 s</p><span class="meta"></span>
+    </article>
+    <article class="kpi" id="k-spo2">
+      <h2>SpO₂</h2><p class="valor">—</p><p class="detalle">promedio de 10 s</p><span class="meta"></span>
+    </article>
+    <article class="kpi" id="k-latencia">
+      <h2>Latencia MQTT (ida)</h2><p class="valor">—</p><p class="detalle">mediana de los últimos 30 ping</p><span class="meta"></span>
+    </article>
+    <article class="kpi" id="k-aciertos">
+      <h2>Tasa de aciertos</h2><p class="valor">—</p><p class="detalle">selecciones en modo prueba</p><span class="meta"></span>
+    </article>
+    <article class="kpi" id="k-tsel">
+      <h2>Tiempo de selección</h2><p class="valor">—</p><p class="detalle">mediana</p><span class="meta"></span>
+    </article>
+    <article class="kpi" id="k-accidentales">
+      <h2>Activaciones accidentales</h2><p class="valor">—</p><p class="detalle">por cada 5 min en reposo</p><span class="meta"></span>
+    </article>
+  </section>
+
+  <section class="graficos">
+    <article class="tarjeta">
+      <h2>Signos vitales · últimos 5 min</h2>
+      <div class="leyenda"><span class="c-bpm">● Pulso (BPM, eje izq.)</span><span class="c-spo2">● SpO₂ (%, eje der.)</span></div>
+      <canvas id="g-vitales"></canvas>
+    </article>
+    <article class="tarjeta">
+      <h2>Latencia de ida · últimos 5 min</h2>
+      <div class="leyenda"><span class="c-lat">● ping</span><span class="c-meta">— meta 300 ms</span></div>
+      <canvas id="g-latencia"></canvas>
+    </article>
+  </section>
+
+  <section class="tablas">
+    <article class="tarjeta">
+      <h2>Disponibilidad del nodo</h2>
+      <dl class="datos">
+        <dt>En línea</dt><dd id="d-disponibilidad">—</dd>
+        <dt>Desconexiones</dt><dd id="d-caidas">0</dd>
+        <dt>Selecciones enviadas</dt><dd id="d-enviadas">0</dd>
+        <dt>Cancelaciones (EMG)</dt><dd id="d-cancelaciones">0</dd>
+        <dt>Tiempo en reposo medido</dt><dd id="d-reposo">0 min</dd>
+      </dl>
+      <div class="botones">
+        <button id="b-csv">Exportar CSV</button>
+        <button id="b-reiniciar" class="secundario">Reiniciar métricas</button>
+      </div>
+    </article>
+    <article class="tarjeta registro">
+      <h2>Últimos eventos</h2>
+      <table>
+        <thead><tr><th>Hora</th><th>Origen</th><th>Evento</th></tr></thead>
+        <tbody id="t-eventos"></tbody>
+      </table>
+    </article>
+  </section>
+
+  <footer class="pie">Los valores de pulso y SpO₂ son referenciales: el MAX30102 no es un dispositivo médico.</footer>
+
+  <script src="../laptop/web/config.js"></script>
+  <script src="../laptop/web/mqtt-ws.js"></script>
+  <script src="graficos.js"></script>
+  <script src="dashboard.js"></script>
+</body>
+</html>

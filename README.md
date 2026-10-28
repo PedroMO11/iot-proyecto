@@ -109,11 +109,18 @@ Todo el equipo debe respetar estos topics y formatos, para que cada parte pueda 
 | `asistivo/nodo1/imu/evento` | ESP32 | Interfaz | 1 | `{"dir":"izq"}`, con `dir` = `izq`, `der`, `arriba` o `abajo` |
 | `asistivo/nodo1/vitales` | ESP32 | Dashboard | 0 | `{"bpm":72,"spo2":98,"ts":...}`, cada 1 s |
 | `asistivo/nodo1/cmd` | Interfaz | ESP32 | 1 | `{"accion":"frase","id":3}`, `{"accion":"luz","estado":"toggle"}` o `{"accion":"alerta"}` |
-| `asistivo/nodo1/estado` | ESP32 (LWT) | Dashboard | 1, retenido | `"online"` / `"offline"` |
+| `asistivo/nodo1/estado` | ESP32 (LWT) | Interfaz, dashboard | 1, retenido | `"online"` / `"offline"` |
+| `asistivo/nodo1/ping` → `pong` | Dashboard → ESP32 | Dashboard | 0 | El ESP32 devuelve en `pong` el mismo texto que recibe en `ping` (ya lo hace `02b`). El dashboard mide así la latencia cada 2 s |
+| `asistivo/nodo1/actuadores` | ESP32 | Dashboard | 1, retenido | `{"luz":true}` *(opcional: estado del relé)* |
+| `asistivo/vision/mirada` | Visión | Interfaz | 0 | `{"region":4}` (1–6), o `{"region":null}` si no hay cara |
+| `asistivo/interfaz/estado` | Interfaz | Dashboard | 1, retenido | `{"modo":"uso"}`, con `modo` = `uso`, `prueba` o `reposo` |
+| `asistivo/interfaz/seleccion` | Interfaz | Dashboard | 1 | `{"modo":"prueba","id":3,"frase":"Tengo sed","via":"emg","enviado":true,"objetivo":3,"acierto":true,"t_seleccion_ms":2300,"ts":...}` |
 
 - `ts` = `millis()` del ESP32. Sirve para medir la latencia.
 - El ESP32 registra el Last Will (LWT) `"offline"` al conectarse y publica `"online"` apenas conecta.
 - Para revisar todo el tráfico desde la laptop: `mosquitto_sub -h localhost -t "asistivo/#" -v`
+- **Pendiente en `nodo_asistivo`:** responder `ping` → `pong` y publicar `actuadores` (sin `pong`, el dashboard muestra *"el nodo no responde al ping"*).
+- `ts` de la interfaz es la hora de la laptop (`Date.now()`), no `millis()`.
 
 ---
 
@@ -123,6 +130,7 @@ Todo el equipo debe respetar estos topics y formatos, para que cada parte pueda 
 /
 ├── README.md                  ← este documento
 ├── CHECKLIST_ARMADO.md        ← pruebas paso a paso con casillas y registro de resultados
+├── COMPRAS.md                 ← lo que falta comprar (transistores, carga del relé, cables)
 ├── .gitignore                 ← excluye config.h, .venv, __pycache__ y .pio
 ├── firmware/                  ← código del ESP32 (Arduino IDE o PlatformIO)
 │   ├── pruebas/               ← sketches pequeños, uno por paso (ver sección 7 y CHECKLIST_ARMADO.md)
@@ -146,10 +154,11 @@ Todo el equipo debe respetar estos topics y formatos, para que cada parte pueda 
 ├── laptop/
 │   ├── mosquitto.conf
 │   ├── requirements.txt
-│   ├── pruebas/               ← latencia_mqtt.py
+│   ├── pruebas/               ← latencia_mqtt.py, simulador_nodo.py (ESP32 simulado)
+│   ├── web/                   ← cliente MQTT por WebSocket y configuración (compartidos)
 │   ├── vision/                ← MediaPipe: mirada → región 1..6
-│   └── interfaz/              ← menú 2×3, cursor, publica en cmd
-├── dashboard/                 ← métricas y signos vitales
+│   └── interfaz/              ← menú 2×3 del paciente (página web)
+├── dashboard/                 ← panel del cuidador: signos vitales y métricas (página web)
 └── docs/                      ← informe, diagramas, fotos de pruebas
 ```
 
@@ -171,12 +180,12 @@ Todo el equipo debe respetar estos topics y formatos, para que cada parte pueda 
    - `SparkFun MAX3010x Pulse and Proximity Sensor Library`
 
 ### Laptop
-1. Instalar **Mosquitto** (https://mosquitto.org/download/) y arrancarlo con la configuración del repositorio, que acepta conexiones desde el ESP32:
+1. Instalar **Mosquitto** (https://mosquitto.org/download/) y arrancarlo con la configuración del repositorio. Abre el **1883** (MQTT por TCP, para el ESP32) y el **9001** (MQTT por WebSocket, para la interfaz y el dashboard):
    ```
    mosquitto -c laptop/mosquitto.conf -v
    ```
-   En Windows, permitir Mosquitto en el firewall (red privada) si el ESP32 no logra conectarse.
-2. Python 3.10 o superior:
+   En Windows, permitir Mosquitto en el firewall (red privada) si el ESP32 no logra conectarse. En Linux con firewalld: `sudo firewall-cmd --zone=public --add-port=1883/tcp`.
+2. Python 3.10 o superior (en Linux, activar el entorno con `source .venv/bin/activate` o usar `.venv/bin/python`):
    ```
    python -m venv .venv
    pip install -r laptop/requirements.txt
@@ -259,14 +268,25 @@ Checklist: [sección 5](CHECKLIST_ARMADO.md#5-actuadores).
 
 ### Paso 6: Laptop (en paralelo, no necesita hardware)
 - **`laptop/vision/`:** MediaPipe Face Mesh con `refine_landmarks=True` (478 landmarks), posición del iris respecto a las comisuras del ojo, y asignación a una de las 6 regiones (2 × 3). Agregar un suavizado para que el cursor no tiemble.
-- **`laptop/interfaz/`:** menú 2 × 3 a pantalla completa. El cursor se mueve con la mirada o con `imu/evento`; `emg/evento` confirma o cancela; al confirmar se publica en `cmd`.
-- **`dashboard/`:** suscrito a `asistivo/nodo1/#`. Muestra el BPM y la SpO₂ en vivo, el estado online/offline y las métricas:
-  - tasa de aciertos (meta ≥ 90 %),
-  - tiempo de selección (meta ≤ 5 s),
-  - activaciones accidentales en reposo (meta ≤ 1 cada 5 min),
-  - latencia MQTT (meta < 300 ms).
+- **`laptop/interfaz/`** ✅: menú 2 × 3 a pantalla completa (página web). El cursor se mueve con `imu/evento` (una casilla), con `vision/mirada` (región directa) o con el teclado; `emg/evento` confirma o cancela; al confirmar publica en `cmd` y en `interfaz/seleccion`. Tras confirmar ignora confirmaciones durante 1,5 s. Tres modos (tecla **M**):
+  - **uso:** normal;
+  - **prueba:** marca un objetivo al azar y registra acierto o error y el tiempo de selección;
+  - **reposo:** no envía frases; cada confirmación del EMG cuenta como activación accidental.
+- **`dashboard/`** ✅: suscrito a `asistivo/#`. No solo muestra: calcula las métricas con meta, en verde o rojo:
+  - pulso y SpO₂ (promedio de 10 s) con alerta fuera de rango (50–120 BPM, SpO₂ < 92 %; referencial),
+  - tasa de aciertos en modo prueba (meta ≥ 90 %),
+  - tiempo de selección, mediana (meta ≤ 5 s),
+  - activaciones accidentales por cada 5 min en reposo (meta ≤ 1),
+  - latencia MQTT de ida por ping/pong, mediana y p90 (meta < 300 ms),
+  - disponibilidad del nodo (% en línea y desconexiones).
 
-  Para desarrollarlo sin el ESP32 se pueden simular datos con `mosquitto_pub`.
+  Gráficos de signos vitales y latencia de los últimos 5 min, registro de eventos y botón **Exportar CSV** para las figuras del informe.
+
+**Cómo correrlo:**
+1. `mosquitto -c laptop/mosquitto.conf -v`
+2. Abrir en el navegador `laptop/interfaz/index.html` (tecla **F**: pantalla completa) y `dashboard/index.html`. Funcionan sin internet: no usan librerías externas.
+3. **Sin el ESP32:** `.venv/bin/python laptop/pruebas/simulador_nodo.py` publica vitales, responde ping y ejecuta los comandos. Por teclado: `a/d/w/s` = cabeza, `c` = confirmar, `x` = cancelar, `n` = sin dedo (Enter tras cada tecla).
+4. **Dashboard desde otro equipo o un celular** en la misma red: en la laptop, `python -m http.server 8000` desde la raíz del repo, y abrir `http://<IP-de-la-laptop>:8000/dashboard/?broker=ws://<IP-de-la-laptop>:9001` (abrir también los puertos 8000 y 9001 en el firewall).
 
 ### Paso 7: Enclosure y montaje
 Carcasa del nodo (impresa en 3D o reciclada), vincha para el MPU6050 y el electrodo EMG, y soporte para el MAX30102 en el dedo.
