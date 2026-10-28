@@ -32,7 +32,7 @@ El código de cada prueba está en [firmware/pruebas/](firmware/pruebas/) y en [
 Instrucciones en el [README, sección 6](README.md#6-preparar-el-entorno).
 - [ ] Arduino IDE 2 con el paquete de placas **esp32** y la placa **ESP32 Dev Module**.
 - [ ] **Partition Scheme: "Huge APP (3MB No OTA)"**.
-- [ ] Librerías instaladas: `ESP32-A2DP` (ZIP), `PubSubClient`, `ArduinoJson` 7, `Adafruit MPU6050`, `SparkFun MAX3010x`.
+- [ ] Librerías instaladas: `ESP32-A2DP` (ZIP), `PubSubClient`, `ArduinoJson` 7, `SparkFun MAX3010x` (`Adafruit MPU6050` ya no hace falta: ver 4.1).
 - [ ] Python 3 con `pip install -r laptop/requirements.txt`.
 - [ ] **ffmpeg** instalado.
 - [ ] Mosquitto instalado (se necesita a partir de la prueba B).
@@ -186,13 +186,13 @@ Sketch: [firmware/pruebas/03_escaner_i2c/](firmware/pruebas/03_escaner_i2c/03_es
 | AD0 | sin conectar (o GND), dirección 0x68 |
 | XDA, XCL, INT | sin conectar |
 
-- [ ] Cableado según la tabla (USB desconectado).
-- [ ] Escáner I2C → aparece **0x68**.
-- [ ] Cargar *File → Examples → Adafruit MPU6050 → basic_readings* → los valores cambian al mover el sensor.
-- [ ] Cargar [firmware/pruebas/03a_mpu6050/](firmware/pruebas/03a_mpu6050/03a_mpu6050.ino): filtro complementario a 100 Hz que grafica `pitch` y `roll`.
+- [x] Cableado según la tabla (USB desconectado).
+- [x] Escáner I2C → aparece **0x68**.
+- [x] ~~Cargar *File → Examples → Adafruit MPU6050 → basic_readings*~~ **No sirve con nuestro módulo:** el GY-521 trae un chip compatible con `WHO_AM_I = 0x74` (no 0x68) y la librería de Adafruit lo rechaza (*"No se encontró el MPU6050"*). `03a` lee los registros directamente.
+- [x] Cargar [firmware/pruebas/03a_mpu6050/](firmware/pruebas/03a_mpu6050/03a_mpu6050.ino): filtro complementario a 100 Hz que grafica `pitch` y `roll`.
 
-- [ ] En el Serial Plotter: con el sensor quieto, las curvas están planas (sin deriva).
-- [ ] Inclinar **adelante y atrás** mueve una curva; **izquierda y derecha** mueve la otra. Anotar cuál es cuál, porque depende de cómo quede montado en la vincha.
+- [x] En el Serial Plotter: con el sensor quieto, las curvas están planas (sin deriva). *(Ruido ±0,05°; en reposo marca ~10° / −14° por el desvío del clon → el firmware debe calibrar la posición neutra al arrancar.)*
+- [x] Inclinar **adelante y atrás** mueve una curva; **izquierda y derecha** mueve la otra. Anotar cuál es cuál, porque depende de cómo quede montado en la vincha. *(Sensor plano: **adelante = pitch +**, **izquierda = roll −**. Marcar la orientación en el módulo.)*
 - [ ] Montar el sensor en la vincha y medir cuántos grados se inclina la cabeza **cómodamente** (meta: unos 15°, no 45°).
 - [ ] *(Siguiente)* Agregar umbrales con histéresis para generar **un** evento por inclinación (`izq`, `der`, `arriba`, `abajo`).
 
@@ -208,13 +208,14 @@ Sketch: [firmware/pruebas/03_escaner_i2c/](firmware/pruebas/03_escaner_i2c/03_es
 | SDA | GPIO21 (compartido con el MPU6050) |
 | INT | sin conectar |
 
-- [ ] Cableado según la tabla.
-- [ ] Escáner I2C → aparece **0x57** (y **0x68** si el MPU6050 sigue conectado).
-- [ ] *File → Examples → SparkFun MAX3010x → Example1_Basic_Readings* → los valores cambian al poner y quitar el dedo. El LED rojo del sensor debe encenderse.
-- [ ] *Example5_HeartRate* → el **BPM promedio** se estabiliza tras unos 10–15 s con el dedo quieto.
-- [ ] *Example8_SPO2* → en el Monitor Serie escribir cualquier tecla para empezar → **SpO₂** entre 95 y 100 % en una persona sana.
+- [x] Cableado según la tabla.
+- [x] Escáner I2C → aparece **0x57** (y **0x68** si el MPU6050 sigue conectado).
+- [x] El sensor responde al poner y quitar el dedo (IR ~300 sin dedo, ~100 000 con dedo). El LED rojo se enciende solo cuando un sketch lo configura.
+- [x] ~~*Example5_HeartRate*~~ **Su BPM no sirve:** salta entre 7 y 213 (el detector se engancha a la luz ambiental).
+- [x] ~~*Example8_SPO2*~~ **Cuelga el ESP32** (usa el GPIO11, que es de la flash). Usar [firmware/pruebas/03b_max30102/](firmware/pruebas/03b_max30102/03b_max30102.ino), que además lee la FIFO directo (con la librería llegaban ~10 de las 25 muestras/s), usa brillo 30 (con 60 se saturaba al 96 %) y no se cuelga si se suelta un cable. **SpO₂ 99 %**.
+- [x] **El pulso del algoritmo de Maxim tampoco sirve** (125 BPM con el pulso real en ~79): cuenta la muesca dícrota como otro latido. El pulso se calcula con un pasa banda de 0,7–3,5 Hz y los intervalos entre latidos (validado con la gráfica de `docs/resultados/`).
 - [ ] Comparar con un oxímetro de farmacia o un reloj: anotar la diferencia en la sección 6.
-- [ ] Probar sujetando el dedo con una **liga o cinta**, porque la presión cambia mucho la lectura.
+- [ ] Probar sujetando el dedo con una **liga o cinta**, porque la presión cambia mucho la lectura. *(El 2026-10-28 el módulo se apagó 3 veces al presionarlo en el protoboard: conectarlo con dupont, sin protoboard.)*
 
 **Si no aparece 0x57:** revisar SDA y SCL (a menudo están cruzados). Algunos módulos morados genéricos tienen problemas con las resistencias pull-up; probar alimentando VIN con 5 V **solo si el módulo tiene regulador**, o cambiar de módulo.
 
@@ -324,8 +325,8 @@ Completar a medida que se prueba. Sirve como evidencia para el informe final.
 | Coexistencia: latencia de ida **con** audio | 2026-10-21 | ✅ promedio · ⚠️ máximo | Promedio 113 / mediana 97 / p90 207 / máximo 440 ms; 2/30 > 300 ms. 22 frases por MQTT durante la prueba, sin reinicios ni caídas |
 | Coexistencia: pings recibidos | 2026-10-21 | 30/30 | Con y sin audio |
 | Coexistencia: estable 10 min | 2026-10-21 | ⏸ parcial | 3,6 min: 214/214 pings, 11 frases, sin reinicios ni `offline`. Ida: media 139 / p90 289 / máximo 868 ms; 19/214 > 300 ms |
-| MPU6050: grados cómodos de inclinación | | | Adelante / lado: |
-| MAX30102 vs oxímetro de referencia | | | BPM: / SpO₂: |
+| MPU6050: grados cómodos de inclinación | 2026-10-28 | ⬜ falta en la vincha | En la mano: adelante +24,7° en pitch (roll −1,2°); izquierda −34,8° en roll (pitch −9,8°). Clon con WHO_AM_I 0x74 |
+| MAX30102 vs oxímetro de referencia | 2026-10-28 | ✅ sin referencia | 60 s a 25 muestras/s, dedo apoyado: **pulso ~79 BPM** (75–88; espectro 78) · **SpO₂ 99 %** (Maxim). Sin oxímetro para comparar. Gráfica y datos en `docs/resultados/` |
 | EMG: envolvente en reposo vs apretón | 2026-10-21 | ✅ antebrazo · ⬜ masetero | **Antebrazo** (flexores): reposo ~11 (σ 1,2), puños 300–420 cuentas (~30×). Simulando `03c_emg_eventos` sobre la grabación, el umbral μ+20 ≈ 31 da 2 falsos en reposo; con ~60 no hay falsos. Gráfica y datos en `docs/resultados/` |
 | EMG: aciertos en 10 apretones | | /10 | Meta ≥ 9 |
 | EMG: falsos en 5 min de reposo | | | Meta ≤ 1 |

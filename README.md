@@ -131,7 +131,7 @@ Todo el equipo debe respetar estos topics y formatos, para que cada parte pueda 
 │   │   ├── 02b_coexistencia/
 │   │   ├── 03_escaner_i2c/
 │   │   ├── 03a_mpu6050/
-│   │   ├── 03b_max30102/      ← usa los ejemplos de SparkFun (ver su README)
+│   │   ├── 03b_max30102/      ← pulso y SpO₂ (algoritmo de Maxim adaptado al ESP32)
 │   │   ├── 03c_emg_senal/
 │   │   ├── 03c_emg_eventos/
 │   │   ├── 04a_rele/
@@ -167,7 +167,7 @@ Todo el equipo debe respetar estos topics y formatos, para que cada parte pueda 
    - `PubSubClient` (Nick O'Leary): MQTT
    - `ArduinoJson` (Benoit Blanchon, versión 7): JSON
    - `ESP32-A2DP` (Phil Schatzmann): audio Bluetooth. No está en el gestor: descargar el ZIP de https://github.com/pschatzmann/ESP32-A2DP y añadirlo con *Sketch → Include Library → Add .ZIP Library*.
-   - `Adafruit MPU6050` (instala también `Adafruit Unified Sensor` y `Adafruit BusIO`)
+   - ~~`Adafruit MPU6050`~~: ya no hace falta. Nuestro GY-521 es un clon (`WHO_AM_I = 0x74`) que la librería rechaza; `03a_mpu6050` lee los registros directamente
    - `SparkFun MAX3010x Pulse and Proximity Sensor Library`
 
 ### Laptop
