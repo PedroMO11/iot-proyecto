@@ -6,6 +6,7 @@ const uint32_t CALIBRACION_MS = 5000;
 const uint32_t MIN_MS = 100;            // contracción mínima para confirmar
 const uint32_t CANCELAR_MS = 1000;      // más de 1 s = cancelar
 const uint32_t REFRACTARIO_MS = 700;
+const float MARGEN_MIN = 50;            // umbral ≥ μ + 50: con +20, movimientos chicos en reposo disparaban (antebrazo, 2026-10-21)
 
 float base = 0, buf[VENTANA] = {0}, suma = 0;
 int ib = 0;
@@ -42,7 +43,7 @@ void calibrar() {
   }
   float mu = s / n;
   float sigma = sqrt(max(0.0, s2 / n - (double)mu * mu));
-  umbral = max(mu + 3 * sigma, mu + 20);   // margen mínimo por si σ es muy pequeña
+  umbral = max(mu + 3 * sigma, mu + MARGEN_MIN);   // margen mínimo por si σ es muy pequeña
   Serial.printf("μ=%.1f σ=%.1f umbral=%.1f\n", mu, sigma, umbral);
 }
 

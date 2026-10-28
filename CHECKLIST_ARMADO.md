@@ -130,6 +130,7 @@ Sketch: [firmware/pruebas/02a_a2dp_solo/](firmware/pruebas/02a_a2dp_solo/02a_a2d
 - [x] Las 6 frases suenan completas, sin cortes ni velocidad rara.
 - [x] Ajustar `set_volume` si suena muy fuerte o saturado. *(Quedó en 127 + ganancia digital ×2,5: los WAV TTS llegan con pico ~12 000 de 32 767.)*
 - [x] Al apagar y prender el parlante, el ESP32 se reconecta solo. *(ESP32-A2DP 1.8.11 no reintenta sola tras una desconexión: el sketch llama a `reconnect()` cada 10 s y activa `set_auto_reconnect(true)`, que guarda la dirección en la NVS. Tras el primer emparejamiento ya no hace falta el modo emparejamiento.)*
+- [x] **Cambiar de parlante** (2026-10-28, Xiaomi Sound Pocket): el ESP32 sigue buscando el último guardado. `clean_last_connection()` **no borra la NVS si la dirección en memoria ya es cero**: primero `set_auto_reconnect(direccionFicticia)` y luego `clean_last_connection()`. Buscar por parte del nombre con `set_ssid_callback` ("xiaomi") funcionó mejor que el nombre exacto.
 
 **Si no conecta:** revisar el nombre exacto, que el parlante no esté enlazado a otro equipo y que esté a menos de 2 m. Si la voz suena muy rápida o muy lenta, el WAV no está a 16 000 Hz: repetir el paso 1.3.
 
@@ -254,6 +255,8 @@ Sketch: [firmware/pruebas/03_escaner_i2c/](firmware/pruebas/03_escaner_i2c/03_es
 
 > **Si la señal sale plana en 0:** puede que el GPIO34 esté **saturado** (4095, ~3,17 V fijos), y al restarle el nivel medio queda en 0. En reposo debe marcar **~1,5 V con ruido**. Revisar que el azul esté en **D34** y el rojo en **3V3**, que los **3 contactos** del electrodo toquen la piel y que el cable de 3,5 mm esté metido hasta el fondo. *(Pasó el 2026-10-21 y se resolvió revisando cables y electrodo.)*
 
+> **Si la señal tiene mucho ruido en reposo** (envolvente de cientos en vez de ~11): casi seguro es la **red eléctrica (60 Hz)**. El 2026-10-28, en un salón y con la laptop a batería, el 94 % de la señal en reposo era 60 Hz (en el Serial Plotter a 100 Hz aparece como 40 Hz). `03c_emg_senal` ahora tiene un **filtro notch de 60/120/180 Hz** (conserva el 87 % de la banda de 20–450 Hz) y bajó el reposo de 424 a 37. **Pero ese día el sensor tampoco mostró las contracciones**, ni en el masetero (saturaba el ADC) ni en el antebrazo, donde el 2026-10-21 sí funcionó: o la interferencia satura la entrada del sensor, o el cable de 3,5 mm o el electrodo fallan. **Pendiente:** repetir el antebrazo donde funcionó; mover el conector de 3,5 mm para ver si la señal salta. Gráficas en `docs/resultados/2026-10-28_emg_*`.
+
 **Sketch 2: detectar confirmar y cancelar.** [firmware/pruebas/03c_emg_eventos/](firmware/pruebas/03c_emg_eventos/03c_emg_eventos.ino): calibra 5 s en reposo (umbral μ + 3σ), confirma con contracciones de 100 ms a 1 s, cancela con más de 1 s y aplica un periodo refractario de 700 ms. Esos valores son constantes al inicio del sketch.
 
 - [ ] Al arrancar imprime μ, σ y el umbral.
@@ -327,7 +330,7 @@ Completar a medida que se prueba. Sirve como evidencia para el informe final.
 | Coexistencia: estable 10 min | 2026-10-21 | ⏸ parcial | 3,6 min: 214/214 pings, 11 frases, sin reinicios ni `offline`. Ida: media 139 / p90 289 / máximo 868 ms; 19/214 > 300 ms |
 | MPU6050: grados cómodos de inclinación | 2026-10-28 | ⬜ falta en la vincha | En la mano: adelante +24,7° en pitch (roll −1,2°); izquierda −34,8° en roll (pitch −9,8°). Clon con WHO_AM_I 0x74 |
 | MAX30102 vs oxímetro de referencia | 2026-10-28 | ✅ sin referencia | 60 s a 25 muestras/s, dedo apoyado: **pulso ~79 BPM** (75–88; espectro 78) · **SpO₂ 99 %** (Maxim). Sin oxímetro para comparar. Gráfica y datos en `docs/resultados/` |
-| EMG: envolvente en reposo vs apretón | 2026-10-21 | ✅ antebrazo · ⬜ masetero | **Antebrazo** (flexores): reposo ~11 (σ 1,2), puños 300–420 cuentas (~30×). Simulando `03c_emg_eventos` sobre la grabación, el umbral μ+20 ≈ 31 da 2 falsos en reposo; con ~60 no hay falsos. Gráfica y datos en `docs/resultados/` |
+| EMG: envolvente en reposo vs apretón | 2026-10-21 / 28 | ✅ antebrazo (21) · ❌ 28: masetero y antebrazo sin contracciones, ruido de 60 Hz | **Antebrazo** (flexores): reposo ~11 (σ 1,2), puños 300–420 cuentas (~30×). Simulando `03c_emg_eventos` sobre la grabación, el umbral μ+20 ≈ 31 da 2 falsos en reposo; con ~60 no hay falsos. Gráfica y datos en `docs/resultados/` |
 | EMG: aciertos en 10 apretones | | /10 | Meta ≥ 9 |
 | EMG: falsos en 5 min de reposo | | | Meta ≤ 1 |
 | Relé: lógica (HIGH o LOW = encendido) | 2026-10-28 | ✅ LOW | JQC3F-05VDC-C; conmuta solo con VCC del módulo a 3V3 (provisional, falta transistor). Sin carga de 12 V todavía |
