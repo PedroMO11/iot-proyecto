@@ -244,10 +244,10 @@ Antes de nada, correr el **escáner I2C** ([03_escaner_i2c](firmware/pruebas/03_
 **3c. EMG**
 - Leer el GPIO34 y graficar en el **Serial Plotter**, comparando la mandíbula relajada con la mandíbula apretada.
 - Algoritmo:
-  1. *(Solo opción B)* restar el nivel medio y tomar el valor absoluto.
+  1. *(Solo opción B)* restar el nivel medio, quitar la red eléctrica con un **filtro notch en 60/120/180 Hz** y tomar el valor absoluto.
   2. Media móvil de 50 ms.
-  3. **Calibración al inicio:** 5 s en reposo → calcular la media μ y la desviación σ. Umbral = **μ + 3σ**.
-  4. **Confirmar** = la señal supera el umbral entre **100 ms y 1 s**.
+  3. **Calibración al inicio:** 5 s en reposo → calcular la media μ y la desviación σ. Umbral = **μ + 3σ** (como mínimo μ + 50). Se repite en cada arranque, así que se adapta al ruido del lugar.
+  4. **Confirmar** = la señal supera el umbral entre **100 ms y 1 s**. La contracción termina al bajar a la mitad entre μ y el umbral (histéresis), para que un apretón largo no se parta en dos.
   5. **Cancelar** = la señal supera el umbral **más de 1 s**.
   6. **Periodo refractario de 700 ms** después de cada evento.
 - ✅ Apretar la mandíbula da un `confirmar`; mantenerla da un `cancelar`; hablar o tragar no dispara eventos, o casi nunca.
@@ -309,6 +309,7 @@ Carcasa del nodo (impresa en 3D o reciclada), vincha para el MPU6050 y el electr
 |---|---|
 | WiFi y Bluetooth comparten la misma radio de 2,4 GHz | Probarlo en el paso 2, medir la latencia y tener listo el plan B |
 | Activaciones accidentales del EMG | Calibración por sesión, duración mínima, periodo refractario y medición en el dashboard |
+| Ruido de la red (60 Hz) en el salón de la presentación | Filtro notch e histéresis en el firmware, calibración en el mismo lugar, electrodo firme sobre la piel limpia y lejos de enchufes y cargadores. Plan B: electrodo en el antebrazo (funcionó con ruido el 2026-10-28) o confirmar con el teclado (Enter / Esc) |
 | La salida del EMG supera los 3,3 V (opción A) | Divisor 20k/10k **siempre** conectado antes del GPIO34 |
 | La visión falla con poca luz | Iluminación frontal, distancia de 50–70 cm; la cabeza sirve como entrada alternativa |
 | El WiFi de la universidad bloquea MQTT | Hotspot o router propio |
