@@ -32,7 +32,7 @@ for i in 1 2 3 4 5 6; do ffmpeg -y -i frase$i.mp3 -af "$T,areverse,$T,areverse,l
 Luego generar `frases.h`:
 
 ```bash
-python ../herramientas/wav_a_header.py frases.h frase1.wav frase2.wav frase3.wav frase4.wav frase5.wav frase6.wav
+uv run ../herramientas/wav_a_header.py frases.h frase1.wav frase2.wav frase3.wav frase4.wav frase5.wav frase6.wav
 ```
 
 Por último, copiar `frases.h` a cada sketch que lo use (`02a_a2dp_solo`, `02b_coexistencia` y `nodo_asistivo`), reemplazando el marcador de posición en silencio que traen.

@@ -1,3 +1,0 @@
-opencv-python
-mediapipe
-paho-mqtt>=2.0
