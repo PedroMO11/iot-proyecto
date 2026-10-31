@@ -5,7 +5,7 @@
 # Teclas en la ventana de vista previa:
 #   c → calibrar: mirar cada casilla cuando se ilumina (≈ 15 s)    r → volver a la calibración por defecto
 #   p → pausar / reanudar la publicación                           q / Esc → salir
-# Uso:  python laptop/vision/vision.py [--broker localhost] [--camara 0] [--sin-mqtt]
+# Uso:  uv run laptop/vision/vision.py [--broker localhost] [--camara 0] [--sin-mqtt]
 import argparse
 import json
 import os

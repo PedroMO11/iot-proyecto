@@ -1,5 +1,5 @@
 # Mide la latencia MQTT ida y vuelta (laptop -> ESP32 -> laptop)
-# Uso:  python laptop/pruebas/latencia_mqtt.py [--broker localhost] [--puerto 1883] [-n 30]
+# Uso:  uv run laptop/pruebas/latencia_mqtt.py [--broker localhost] [--puerto 1883] [-n 30]
 import argparse
 import time
 import paho.mqtt.client as mqtt

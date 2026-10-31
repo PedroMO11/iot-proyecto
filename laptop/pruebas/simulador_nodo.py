@@ -4,7 +4,7 @@
 #   a / d / w / s  → imu/evento izq / der / arriba / abajo
 #   c              → emg/evento confirmar        x → cancelar
 #   n              → sin dedo / con dedo         q → salir
-# Uso:  python laptop/pruebas/simulador_nodo.py [--broker localhost] [--puerto 1883]
+# Uso:  uv run laptop/pruebas/simulador_nodo.py [--broker localhost] [--puerto 1883]
 import argparse
 import json
 import math

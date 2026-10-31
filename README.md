@@ -132,6 +132,9 @@ Todo el equipo debe respetar estos topics y formatos, para que cada parte pueda 
 ├── CHECKLIST_ARMADO.md        ← pruebas paso a paso con casillas y registro de resultados
 ├── COMPRAS.md                 ← lo que falta comprar (transistores, carga del relé, cables)
 ├── .gitignore                 ← excluye config.h, .venv, __pycache__, .pio, el modelo y la calibración de la visión
+├── pyproject.toml             ← dependencias de Python (uv)
+├── uv.lock                    ← versiones exactas (sí se sube)
+├── .python-version           ← Python 3.12 para uv
 ├── firmware/                  ← código del ESP32 (Arduino IDE o PlatformIO)
 │   ├── pruebas/               ← sketches pequeños, uno por paso (ver sección 7 y CHECKLIST_ARMADO.md)
 │   │   ├── 01_mqtt_basico/
@@ -153,7 +156,6 @@ Todo el equipo debe respetar estos topics y formatos, para que cada parte pueda 
 │   └── wav_a_header.py        ← convierte los .wav en frases.h
 ├── laptop/
 │   ├── mosquitto.conf
-│   ├── requirements.txt
 │   ├── pruebas/               ← latencia_mqtt.py, simulador_nodo.py (ESP32 simulado)
 │   ├── web/                   ← cliente MQTT por WebSocket y configuración (compartidos por interfaz y dashboard)
 │   ├── vision/                ← vision.py: MediaPipe, mirada → región 1..6
@@ -188,11 +190,11 @@ Todo el equipo debe respetar estos topics y formatos, para que cada parte pueda 
    ```
    En Windows, el instalador deja Mosquitto como **servicio** en el 1883 y **sin** el 9001, así que la interfaz y el dashboard no conectan. Detenerlo antes (PowerShell como administrador: `net stop mosquitto`, o `Set-Service mosquitto -StartupType Manual` para que no vuelva a arrancar) y usar la configuración del repositorio.
    En Windows, permitir Mosquitto en el firewall (red privada) si el ESP32 no logra conectarse. En Linux con firewalld: `sudo firewall-cmd --zone=public --add-port=1883/tcp`.
-2. Python 3.10 a 3.12; con mediapipe 1.2.0 se probó en 3.12 (en Linux, activar el entorno con `source .venv/bin/activate` o usar `.venv/bin/python`):
+2. **uv** para Python (https://docs.astral.sh/uv/): `winget install astral-sh.uv` (Windows), `brew install uv` (Mac) o `curl -LsSf https://astral.sh/uv/install.sh | sh` (Linux). Desde la raíz del repositorio:
    ```
-   python -m venv .venv
-   pip install -r laptop/requirements.txt
+   uv sync
    ```
+   Crea `.venv` con Python 3.12 (fijado en `.python-version`; uv lo descarga si no está instalado) y las versiones exactas de `uv.lock`. Los scripts se corren con `uv run <script>`, sin activar el entorno. Para agregar una librería: `uv add <paquete>` y subir `pyproject.toml` y `uv.lock`. mediapipe 1.2.0 no tiene versión para Mac con procesador Intel.
 3. **ffmpeg**, para convertir los audios: `winget install ffmpeg` (Windows) o `brew install ffmpeg` (Mac).
 
 ### Red
@@ -291,9 +293,9 @@ Checklist: [sección 5](CHECKLIST_ARMADO.md#5-actuadores).
 **Cómo correrlo:**
 1. `mosquitto -c laptop/mosquitto.conf -v`
 2. Abrir en el navegador `laptop/interfaz/index.html` (tecla **F**: pantalla completa) y `laptop/dashboard/index.html`. Funcionan sin internet: no usan librerías externas.
-3. **Mirada:** `.venv/bin/python laptop/vision/vision.py` (en Windows, `.venv\Scripts\python`). Con el broker en otra laptop: `--broker <IP>`. Solo vista previa, sin publicar: `--sin-mqtt`. Calibrar con **C** antes de usarlo, sentado como se va a usar la interfaz.
-4. **Sin el ESP32:** `.venv/bin/python laptop/pruebas/simulador_nodo.py` publica vitales, responde ping y ejecuta los comandos. Por teclado: `a/d/w/s` = cabeza, `c` = confirmar, `x` = cancelar, `n` = sin dedo (Enter tras cada tecla).
-5. **Dashboard desde otro equipo o un celular** en la misma red: en la laptop, `python -m http.server 8000` desde la raíz del repo, y abrir `http://<IP-de-la-laptop>:8000/laptop/dashboard/?broker=ws://<IP-de-la-laptop>:9001` (abrir también los puertos 8000 y 9001 en el firewall).
+3. **Mirada:** `uv run laptop/vision/vision.py`. Con el broker en otra laptop: `--broker <IP>`. Solo vista previa, sin publicar: `--sin-mqtt`. Calibrar con **C** antes de usarlo, sentado como se va a usar la interfaz.
+4. **Sin el ESP32:** `uv run laptop/pruebas/simulador_nodo.py` publica vitales, responde ping y ejecuta los comandos. Por teclado: `a/d/w/s` = cabeza, `c` = confirmar, `x` = cancelar, `n` = sin dedo (Enter tras cada tecla).
+5. **Dashboard desde otro equipo o un celular** en la misma red: en la laptop, `uv run python -m http.server 8000` desde la raíz del repo, y abrir `http://<IP-de-la-laptop>:8000/laptop/dashboard/?broker=ws://<IP-de-la-laptop>:9001` (abrir también los puertos 8000 y 9001 en el firewall).
 
 ### Paso 7: Enclosure y montaje
 Carcasa del nodo (impresa en 3D o reciclada), vincha para el MPU6050 y el electrodo EMG, y soporte para el MAX30102 en el dedo.

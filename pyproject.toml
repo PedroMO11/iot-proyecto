@@ -1,0 +1,14 @@
+[project]
+name = "iot-proyecto"
+version = "0.1.0"
+description = "Lado laptop del comunicador asistivo: visión con MediaPipe, simulador del nodo y pruebas MQTT"
+requires-python = ">=3.10"
+dependencies = [
+    "mediapipe>=0.10.14",           # vision.py usa la API Tasks (FaceLandmarker)
+    "numpy",
+    "opencv-contrib-python",        # la que pide mediapipe; con opencv-python además quedan dos cv2 que se pisan
+    "paho-mqtt>=2.0",
+]
+
+[tool.uv]
+package = false                     # solo scripts, no se instala como paquete
