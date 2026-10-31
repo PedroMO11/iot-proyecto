@@ -271,12 +271,14 @@ Checklist: [sección 5](CHECKLIST_ARMADO.md#5-actuadores).
 - Evitar `delay()` en el loop de sensores; usar temporización con `millis()` o `vTaskDelayUntil`.
 
 ### Paso 6: Laptop (en paralelo, no necesita hardware)
-- **`laptop/vision/`** ✅: `mirada.py`, webcam + **MediaPipe Face Landmarker** (`mp.solutions`/Face Mesh ya no existe en mediapipe 1.x). Rasgos de los ojos (posición del iris y *blendshapes* de mirada) → regresión ridge → **punto (x, y)** donde mira el usuario, suavizado; la casilla es la que queda bajo el punto, con voto por mayoría y 0,3 s de espera. Se descartan los parpadeos.
-  - **Calibración** (tecla **C** en la interfaz): 6 casillas, 2,5 s cada una; se guarda en `laptop/vision/calibracion.json` con las muestras (no se sube: es personal).
-  - **Recentrado** (tecla **O**): mirar 1 s el punto del centro corrige el desvío si la persona se movió.
-  - **Solo los ojos, no la cabeza:** con la cabeza, el modelo se apoyaba en ella y un giro mínimo movía el cursor un 11 % de la pantalla; solo con los ojos acertó 143/144 casillas en muestras no vistas (129/144 con cabeza).
-  - El modelo `face_landmarker.task` (3,7 MB) se descarga solo la primera vez.
-  - Límite: con una webcam distingue bien 6 zonas grandes, pero no tiene precisión de mouse.
+- **`laptop/vision/`** ✅: `mirada.py` (cámara, MQTT y ventana de diagnóstico) + `modelo.py` (rasgos y modelo) + `evaluar_calibracion.py` (análisis para el informe). Webcam a **1280×720 y 30 fps** + **MediaPipe Face Landmarker** (`mp.solutions`/Face Mesh ya no existe en mediapipe 1.x).
+  - **Rasgos (20):** iris de cada ojo respecto de sus comisuras, en píxeles reales y corregido por el alabeo de la cabeza; apertura de los párpados; 8 *blendshapes* de mirada; **pose 3D de la cabeza** (giro, cabeceo, alabeo y posición en cm, de la matriz de transformación de MediaPipe).
+  - **Calibración** (tecla **C**): 10 puntos (rejilla de 3 × 3 con el **centro y los bordes**, y el centro repetido al final para medir la deriva). El programa prueba 48 variantes (conjuntos de rasgos, 1.er/2.º orden y regularización) y elige la de menor error con **validación cruzada dejando fuera un punto entero**, es decir, acertando en lugares no calibrados.
+  - **Comprobación** (automática tras calibrar, o tecla **K**): 6 puntos en los centros de casilla; informa el **% de casillas acertadas** y el error (en la interfaz, el dashboard y `calibracion.json`). Primera prueba con buena luz (2026-10-30): **100 % de casillas, error de 3,5 % (x) y 4,0 % (y)**.
+  - **Recentrado** (tecla **O**): mirar 1 s el centro corrige el desvío si la persona se movió.
+  - **En uso:** filtro **One Euro** (poco temblor en reposo, poca demora al moverse) e **histéresis** en los bordes (para cambiar de casilla hay que entrar un 4 % en ella y quedarse 0,25 s). Se descartan parpadeos y caras de lado (> 35°).
+  - **Cámara (Linux):** al arrancar pone el antiparpadeo en **60 Hz** (venía en 50 Hz, y con la red de Perú salen bandas) y fija los 30 fps (con poca luz caía a 10). Con poca luz la ventana muestra "POCA LUZ" y no se detecta la cara: iluminar la cara de frente.
+  - `calibracion.json` (personal) y el modelo `face_landmarker.task` (3,7 MB, se descarga solo) no se suben.
 - **`laptop/interfaz/`** ✅: menú 2 × 3 a pantalla completa (página web). El cursor se mueve con `imu/evento` (una casilla), con `vision/mirada` (región directa) o con el teclado; `emg/evento` confirma o cancela; al confirmar publica en `cmd` y en `interfaz/seleccion`. Tras confirmar ignora confirmaciones durante 1,5 s. Tres modos (tecla **M**):
   - **uso:** normal;
   - **prueba:** marca un objetivo al azar y registra acierto o error y el tiempo de selección;
@@ -294,7 +296,7 @@ Checklist: [sección 5](CHECKLIST_ARMADO.md#5-actuadores).
 **Cómo correrlo:**
 1. `mosquitto -c laptop/mosquitto.conf -v`
 2. Abrir en el navegador `laptop/interfaz/index.html` (tecla **F**: pantalla completa) y `dashboard/index.html`. Funcionan sin internet: no usan librerías externas.
-3. **Mirada:** `.venv/bin/python laptop/vision/mirada.py` (abre una ventana con la cámara; `--sin-ventana` para ocultarla). En la interfaz: **C** calibra, **O** recentra, **V** activa o desactiva la mirada.
+3. **Mirada:** `.venv/bin/python laptop/vision/mirada.py` (abre una ventana de diagnóstico con la cámara, los ojos ampliados y un minimapa; `--sin-ventana` para ocultarla). En la interfaz: **C** calibra, **K** comprueba la precisión, **O** recentra, **V** activa o desactiva la mirada. Para el informe: `.venv/bin/python laptop/vision/evaluar_calibracion.py figura.png`.
 4. **Sin el ESP32:** `.venv/bin/python laptop/pruebas/simulador_nodo.py` publica vitales, responde ping y ejecuta los comandos. Por teclado: `a/d/w/s` = cabeza, `c` = confirmar, `x` = cancelar, `n` = sin dedo (Enter tras cada tecla).
 5. **Dashboard desde otro equipo o un celular** en la misma red: en la laptop, `python -m http.server 8000` desde la raíz del repo, y abrir `http://<IP-de-la-laptop>:8000/dashboard/?broker=ws://<IP-de-la-laptop>:9001` (abrir también los puertos 8000 y 9001 en el firewall).
 

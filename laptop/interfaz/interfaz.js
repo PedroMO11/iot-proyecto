@@ -27,7 +27,7 @@ const st = {
   fuente: null,                         // quién movió el cursor por última vez
   nodo: null,                           // "online" / "offline" (retenido por el ESP32)
   activacionesReposo: 0,
-  calibrando: null,                     // casilla que hay que mirar durante la calibración de la visión
+  calibrando: null,                     // {fase, paso, total} mientras la visión calibra, valida o recentra
 };
 window.st = st;                         // para inspeccionar desde la consola
 
@@ -48,7 +48,6 @@ function render() {
     const c = $(`casilla-${f.id}`);
     c.classList.toggle("cursor", f.id === st.cursor && !st.calibrando);
     c.classList.toggle("objetivo", f.id === st.objetivo);
-    c.classList.toggle("calibrar", f.id === st.calibrando);
   }
   document.body.classList.toggle("calibrando", st.calibrando !== null);
   $("estado-modo").textContent = `Modo: ${st.modo}`;
@@ -60,7 +59,8 @@ function render() {
 
   const aviso = $("aviso");
   if (st.calibrando) {
-    aviso.textContent = `Calibrando la mirada · mire la casilla ${st.calibrando} sin mover la cabeza`;
+    const k = st.calibrando, fase = { calibracion: "Calibración", validacion: "Comprobación", centro: "Recentrado" }[k.fase];
+    aviso.textContent = `${fase} de la mirada · mire el punto (${k.paso}/${k.total}) · mueva solo los ojos`;
     aviso.className = "aviso";
   } else if (st.modo === "prueba" && st.objetivo) {
     aviso.textContent = `Prueba · selecciona: «${frase(st.objetivo).texto}»`;
@@ -213,19 +213,24 @@ const cliente = new ClienteMQTT(CONFIG.broker, {
     else if (topic === T.mirada && st.visionActiva && !st.calibrando && m.region >= 1 && m.region <= 6) ponerCursor(m.region, "mirada");
     else if (topic === T.punto) moverPunto(m);
     else if (topic === T.calibracion) {
-      if (m.estado === "mirar") st.calibrando = m.region;
-      else if (m.estado === "centrar") {
-        const r = $("menu").getBoundingClientRect(), c = $("centro-mirada");
-        c.style.left = `${r.left + r.width / 2}px`;
-        c.style.top = `${r.top + r.height / 2}px`;
-        c.classList.remove("oculto");
-      }
-      else {
+      const obj = $("objetivo-mirada");
+      if (m.estado === "mirar") {
+        st.calibrando = { fase: m.fase, paso: m.paso, total: m.total };
+        const r = $("menu").getBoundingClientRect();
+        obj.style.left = `${r.left + m.x * r.width}px`;
+        obj.style.top = `${r.top + m.y * r.height}px`;
+        obj.className = `objetivo-mirada ${m.fase}`;
+        obj.style.setProperty("--duracion", `${m.duracion}s`);
+        void obj.offsetWidth;                   // reiniciar la animación en cada punto
+        obj.classList.add("activo");
+      } else {
         st.calibrando = null;
-        $("centro-mirada").classList.add("oculto");
-        if (m.estado === "listo") toast("Mirada calibrada");
-        else if (m.estado === "centrado") toast("Mirada recentrada");
-        else toast(`Calibración fallida: no se vio la cara en ${(m.faltan || []).join(", ")}`, "mal");
+        obj.className = "objetivo-mirada oculto";
+        if (m.estado === "listo") {
+          const bien = m.acierto >= 85;
+          toast(`${bien ? "Mirada calibrada" : "Precisión baja: recalibre (C)"} · ${Math.round(m.acierto)} % de casillas · error ${m.error.toFixed(1)} %`, bien ? "ok" : "mal");
+        } else if (m.estado === "centrado") toast("Mirada recentrada");
+        else toast(`${m.fase === "validacion" ? "Comprobación" : "Calibración"} fallida en los puntos ${(m.faltan || []).join(", ")}: ¿cara fuera de cámara?`, "mal");
       }
       render();
     }
@@ -248,6 +253,9 @@ document.addEventListener("keydown", (e) => {
   else if (e.key >= "1" && e.key <= "6") ponerCursor(Number(e.key), "teclado");
   else if (e.key === "m" || e.key === "M") cambiarModo();
   else if (e.key === "v" || e.key === "V") { st.visionActiva = !st.visionActiva; render(); }
+  else if (e.key === "k" || e.key === "K") {
+    if (cliente.publicar(T.visionCmd, { accion: "validar" }, { qos: 1 })) toast("Comprobando la precisión: siga los puntos verdes");
+  }
   else if (e.key === "o" || e.key === "O") {
     if (cliente.publicar(T.visionCmd, { accion: "centrar" }, { qos: 1 })) toast("Mire el punto del centro");
   }

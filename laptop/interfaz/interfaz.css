@@ -86,15 +86,9 @@ kbd {
   border: 1px solid #3a4656; background: #1a222d; color: var(--texto);
 }
 
-/* Calibración de la mirada: solo se ve la casilla que hay que mirar, con un punto al centro */
-body.calibrando .casilla { opacity: .18; }
-body.calibrando .casilla.calibrar { opacity: 1; border-color: var(--objetivo); background: #16314d; }
-.casilla.calibrar .icono, .casilla.calibrar .texto { visibility: hidden; }
-.casilla.calibrar::before {
-  content: ""; position: absolute; width: 34px; height: 34px; border-radius: 50%;
-  background: var(--objetivo); animation: latido 1s ease-in-out infinite;
-}
-@keyframes latido { 50% { transform: scale(.55); opacity: .6; } }
+/* Calibración de la mirada: se atenúa el menú y aparece un punto que se encoge (atrae la mirada) */
+body.calibrando .casilla { opacity: .12; }
+body.calibrando .punto-mirada { display: none; }
 
 /* Cursor de la mirada: dónde está mirando el usuario según la visión */
 .punto-mirada {
@@ -105,10 +99,11 @@ body.calibrando .casilla.calibrar { opacity: 1; border-color: var(--objetivo); b
   transition: transform 60ms linear;
 }
 
-/* Recentrado: punto que late en el centro de la zona del menú */
-.centro-mirada {
-  position: fixed; z-index: 11; pointer-events: none; width: 34px; height: 34px; border-radius: 50%;
-  margin: -17px 0 0 -17px;
-  background: var(--objetivo); animation: latido 1s ease-in-out infinite;
-  box-shadow: 0 0 0 9999px rgba(16, 21, 28, .82);
+/* Punto de calibración, comprobación o recentrado: grande al aparecer y se encoge hasta 12 px */
+.objetivo-mirada {
+  position: fixed; z-index: 12; pointer-events: none; width: 64px; height: 64px; margin: -32px 0 0 -32px;
+  border-radius: 50%; border: 3px solid #4aa3ff; background: radial-gradient(#ffffff 0 5px, #4aa3ff 6px 100%);
 }
+.objetivo-mirada.validacion { border-color: #2ecc71; background: radial-gradient(#ffffff 0 5px, #2ecc71 6px 100%); }
+.objetivo-mirada.activo { animation: encoger var(--duracion, 2.4s) ease-out forwards; }
+@keyframes encoger { 0% { transform: scale(1); } 40% { transform: scale(.32); } 100% { transform: scale(.19); } }

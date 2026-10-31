@@ -111,9 +111,9 @@ function alMensaje(topic, texto, { retain }) {
   } else if (topic === T.visionEstado) {
     d.vision = m; d.visionT = ahora;
   } else if (topic === T.calibracion) {
-    if (m.estado === "mirar" && m.region === 1) registrar("visión", "calibración iniciada");
-    else if (m.estado === "listo") registrar("visión", "calibración lista", "ok");
-    else if (m.estado === "error") registrar("visión", `calibración fallida (${(m.faltan || []).join(", ")})`, "mal");
+    if (m.estado === "mirar" && m.paso === 1) registrar("visión", m.fase === "centro" ? "recentrado" : m.fase === "validacion" ? "comprobación de la calibración" : "calibración iniciada");
+    else if (m.estado === "listo") registrar("visión", `calibrada · ${Math.round(m.acierto)} % de casillas · error x ${m.error_x} %, y ${m.error_y} %`, m.acierto >= 85 ? "ok" : "mal");
+    else if (m.estado === "error") registrar("visión", `${m.fase} fallida (puntos ${(m.faltan || []).join(", ")})`, "mal");
   }
 }
 
@@ -182,7 +182,10 @@ function actualizar() {
   $("m-modo").textContent = d.modo.actual ? `modo ${d.modo.actual}` : "sin datos";
   const v = d.vision;
   if (!v || ahora - d.visionT > 6000 || v.activo === false) $("m-vision").innerHTML = "inactiva";
-  else $("m-vision").innerHTML = `${v.cara ? "cara detectada" : "<span style='color:var(--ambar)'>sin cara</span>"} <small>${v.fps} fps · ${v.calibrado ? "calibrada" : "sin calibrar"}${v.region ? ` · casilla ${v.region}` : ""}</small>`;
+  else {
+    const cal = !v.calibrado ? "sin calibrar" : v.calidad ? `${Math.round(v.calidad.acierto)} % casillas · error ${v.calidad.error.toFixed(1)} %` : "calibrada";
+    $("m-vision").innerHTML = `${v.cara ? "cara detectada" : `<span style='color:var(--ambar)'>sin cara${v.brillo < 60 ? " · poca luz" : ""}</span>`} <small>${v.fps} fps · ${cal}${v.region ? ` · casilla ${v.region}` : ""}</small>`;
+  }
   $("m-luz").textContent = d.luz === null ? "—" : d.luz ? "encendida" : "apagada";
 
   // pruebas de uso
