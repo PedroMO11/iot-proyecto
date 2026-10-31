@@ -85,3 +85,30 @@ kbd {
   font-family: inherit; font-size: 12px; padding: 1px 6px; border-radius: 5px;
   border: 1px solid #3a4656; background: #1a222d; color: var(--texto);
 }
+
+/* Calibración de la mirada: solo se ve la casilla que hay que mirar, con un punto al centro */
+body.calibrando .casilla { opacity: .18; }
+body.calibrando .casilla.calibrar { opacity: 1; border-color: var(--objetivo); background: #16314d; }
+.casilla.calibrar .icono, .casilla.calibrar .texto { visibility: hidden; }
+.casilla.calibrar::before {
+  content: ""; position: absolute; width: 34px; height: 34px; border-radius: 50%;
+  background: var(--objetivo); animation: latido 1s ease-in-out infinite;
+}
+@keyframes latido { 50% { transform: scale(.55); opacity: .6; } }
+
+/* Cursor de la mirada: dónde está mirando el usuario según la visión */
+.punto-mirada {
+  position: fixed; left: 0; top: 0; width: 46px; height: 46px; margin: -23px 0 0 -23px;
+  border-radius: 50%; pointer-events: none; z-index: 10;
+  background: rgba(74, 163, 255, .28); border: 3px solid #4aa3ff;
+  box-shadow: 0 0 0 4px rgba(16, 21, 28, .55);
+  transition: transform 60ms linear;
+}
+
+/* Recentrado: punto que late en el centro de la zona del menú */
+.centro-mirada {
+  position: fixed; z-index: 11; pointer-events: none; width: 34px; height: 34px; border-radius: 50%;
+  margin: -17px 0 0 -17px;
+  background: var(--objetivo); animation: latido 1s ease-in-out infinite;
+  box-shadow: 0 0 0 9999px rgba(16, 21, 28, .82);
+}
