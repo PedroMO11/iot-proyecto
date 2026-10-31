@@ -131,7 +131,7 @@ Todo el equipo debe respetar estos topics y formatos, para que cada parte pueda 
 ├── README.md                  ← este documento
 ├── CHECKLIST_ARMADO.md        ← pruebas paso a paso con casillas y registro de resultados
 ├── COMPRAS.md                 ← lo que falta comprar (transistores, carga del relé, cables)
-├── .gitignore                 ← excluye config.h, .venv, __pycache__ y .pio
+├── .gitignore                 ← excluye config.h, .venv, __pycache__, .pio, el modelo y la calibración de la visión
 ├── firmware/                  ← código del ESP32 (Arduino IDE o PlatformIO)
 │   ├── pruebas/               ← sketches pequeños, uno por paso (ver sección 7 y CHECKLIST_ARMADO.md)
 │   │   ├── 01_mqtt_basico/
@@ -148,17 +148,19 @@ Todo el equipo debe respetar estos topics y formatos, para que cada parte pueda 
 │       ├── nodo_asistivo.ino
 │       ├── config.example.h   ← plantilla (sí se sube)
 │       └── config.h           ← WiFi, IP del broker (NO se sube, está en .gitignore)
-├── audios/                    ← las 6 frases (.m4a, .wav y frases.h generado)
+├── audios/                    ← las 6 frases (.mp3 originales, .wav y frases.h generado)
 ├── herramientas/
 │   └── wav_a_header.py        ← convierte los .wav en frases.h
 ├── laptop/
 │   ├── mosquitto.conf
 │   ├── requirements.txt
 │   ├── pruebas/               ← latencia_mqtt.py, simulador_nodo.py (ESP32 simulado)
-│   ├── web/                   ← cliente MQTT por WebSocket y configuración (compartidos)
-│   ├── vision/                ← MediaPipe: mirada → región 1..6
-│   └── interfaz/              ← menú 2×3 del paciente (página web)
-├── dashboard/                 ← panel del cuidador: signos vitales y métricas (página web)
+│   ├── web/                   ← cliente MQTT por WebSocket y configuración (compartidos por interfaz y dashboard)
+│   ├── vision/                ← vision.py: MediaPipe, mirada → región 1..6
+│   │   ├── modelos/           ← face_landmarker.task (se descarga solo, NO se sube)
+│   │   └── calibracion.json   ← calibración de la mirada (NO se sube)
+│   ├── interfaz/              ← menú 2×3 del paciente (página web)
+│   └── dashboard/             ← panel del cuidador: signos vitales y métricas (página web)
 └── docs/                      ← informe, diagramas, fotos de pruebas
 ```
 
@@ -184,8 +186,9 @@ Todo el equipo debe respetar estos topics y formatos, para que cada parte pueda 
    ```
    mosquitto -c laptop/mosquitto.conf -v
    ```
+   En Windows, el instalador deja Mosquitto como **servicio** en el 1883 y **sin** el 9001, así que la interfaz y el dashboard no conectan. Detenerlo antes (PowerShell como administrador: `net stop mosquitto`, o `Set-Service mosquitto -StartupType Manual` para que no vuelva a arrancar) y usar la configuración del repositorio.
    En Windows, permitir Mosquitto en el firewall (red privada) si el ESP32 no logra conectarse. En Linux con firewalld: `sudo firewall-cmd --zone=public --add-port=1883/tcp`.
-2. Python 3.10 o superior (en Linux, activar el entorno con `source .venv/bin/activate` o usar `.venv/bin/python`):
+2. Python 3.10 a 3.12; con mediapipe 1.2.0 se probó en 3.12 (en Linux, activar el entorno con `source .venv/bin/activate` o usar `.venv/bin/python`):
    ```
    python -m venv .venv
    pip install -r laptop/requirements.txt
@@ -267,12 +270,15 @@ Checklist: [sección 5](CHECKLIST_ARMADO.md#5-actuadores).
 - Evitar `delay()` en el loop de sensores; usar temporización con `millis()` o `vTaskDelayUntil`.
 
 ### Paso 6: Laptop (en paralelo, no necesita hardware)
-- **`laptop/vision/`:** MediaPipe Face Mesh con `refine_landmarks=True` (478 landmarks), posición del iris respecto a las comisuras del ojo, y asignación a una de las 6 regiones (2 × 3). Agregar un suavizado para que el cursor no tiemble.
+- **`laptop/vision/`** ✅: `vision.py` con MediaPipe **FaceLandmarker** (API *Tasks*, 478 landmarks con iris: equivale a Face Mesh con `refine_landmarks=True`, que ya no existe en mediapipe ≥ 0.10.30). El modelo `face_landmarker.task` se descarga solo la primera vez. Calcula la posición del iris respecto a las comisuras del ojo y la asigna a una de las 6 regiones (2 × 3); publica en `vision/mirada` **solo cuando cambia la región**, para que la cabeza pueda seguir moviendo el cursor.
+  - **Calibración (tecla C):** se abre a pantalla completa una cuadrícula igual a la de la interfaz y se ilumina cada casilla; el usuario la mira 2,5 s sin mover la cabeza. Para cada eje se prueban varias señales (iris respecto a las comisuras, apertura del ojo, *blendshapes* `eyeLook*` de MediaPipe) y se queda con la que mejor separa columnas y filas; la separación se imprime y se guarda en `laptop/vision/calibracion.json` (no se sube). Si sale < 1,5, mejorar la luz o acercarse.
+  - **Suavizado:** media exponencial, histéresis entre casillas, 4 cuadros seguidos en la región nueva antes de cambiar, y se ignoran los parpadeos.
+  - Teclas: **C** calibrar, **R** volver a la calibración por defecto, **P** pausar la publicación, **Q** salir.
 - **`laptop/interfaz/`** ✅: menú 2 × 3 a pantalla completa (página web). El cursor se mueve con `imu/evento` (una casilla), con `vision/mirada` (región directa) o con el teclado; `emg/evento` confirma o cancela; al confirmar publica en `cmd` y en `interfaz/seleccion`. Tras confirmar ignora confirmaciones durante 1,5 s. Tres modos (tecla **M**):
   - **uso:** normal;
   - **prueba:** marca un objetivo al azar y registra acierto o error y el tiempo de selección;
   - **reposo:** no envía frases; cada confirmación del EMG cuenta como activación accidental.
-- **`dashboard/`** ✅: suscrito a `asistivo/#`. No solo muestra: calcula las métricas con meta, en verde o rojo:
+- **`laptop/dashboard/`** ✅: suscrito a `asistivo/#`. No solo muestra: calcula las métricas con meta, en verde o rojo:
   - pulso y SpO₂ (promedio de 10 s) con alerta fuera de rango (50–120 BPM, SpO₂ < 92 %; referencial),
   - tasa de aciertos en modo prueba (meta ≥ 90 %),
   - tiempo de selección, mediana (meta ≤ 5 s),
@@ -284,9 +290,10 @@ Checklist: [sección 5](CHECKLIST_ARMADO.md#5-actuadores).
 
 **Cómo correrlo:**
 1. `mosquitto -c laptop/mosquitto.conf -v`
-2. Abrir en el navegador `laptop/interfaz/index.html` (tecla **F**: pantalla completa) y `dashboard/index.html`. Funcionan sin internet: no usan librerías externas.
-3. **Sin el ESP32:** `.venv/bin/python laptop/pruebas/simulador_nodo.py` publica vitales, responde ping y ejecuta los comandos. Por teclado: `a/d/w/s` = cabeza, `c` = confirmar, `x` = cancelar, `n` = sin dedo (Enter tras cada tecla).
-4. **Dashboard desde otro equipo o un celular** en la misma red: en la laptop, `python -m http.server 8000` desde la raíz del repo, y abrir `http://<IP-de-la-laptop>:8000/dashboard/?broker=ws://<IP-de-la-laptop>:9001` (abrir también los puertos 8000 y 9001 en el firewall).
+2. Abrir en el navegador `laptop/interfaz/index.html` (tecla **F**: pantalla completa) y `laptop/dashboard/index.html`. Funcionan sin internet: no usan librerías externas.
+3. **Mirada:** `.venv/bin/python laptop/vision/vision.py` (en Windows, `.venv\Scripts\python`). Con el broker en otra laptop: `--broker <IP>`. Solo vista previa, sin publicar: `--sin-mqtt`. Calibrar con **C** antes de usarlo, sentado como se va a usar la interfaz.
+4. **Sin el ESP32:** `.venv/bin/python laptop/pruebas/simulador_nodo.py` publica vitales, responde ping y ejecuta los comandos. Por teclado: `a/d/w/s` = cabeza, `c` = confirmar, `x` = cancelar, `n` = sin dedo (Enter tras cada tecla).
+5. **Dashboard desde otro equipo o un celular** en la misma red: en la laptop, `python -m http.server 8000` desde la raíz del repo, y abrir `http://<IP-de-la-laptop>:8000/laptop/dashboard/?broker=ws://<IP-de-la-laptop>:9001` (abrir también los puertos 8000 y 9001 en el firewall).
 
 ### Paso 7: Enclosure y montaje
 Carcasa del nodo (impresa en 3D o reciclada), vincha para el MPU6050 y el electrodo EMG, y soporte para el MAX30102 en el dedo.

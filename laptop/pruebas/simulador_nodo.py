@@ -4,11 +4,12 @@
 #   a / d / w / s  → imu/evento izq / der / arriba / abajo
 #   c              → emg/evento confirmar        x → cancelar
 #   n              → sin dedo / con dedo         q → salir
-# Uso:  python laptop/pruebas/simulador_nodo.py [--broker localhost]
+# Uso:  python laptop/pruebas/simulador_nodo.py [--broker localhost] [--puerto 1883]
 import argparse
 import json
 import math
 import random
+import sys
 import threading
 import time
 
@@ -18,8 +19,11 @@ FRASES = {1: "Tengo hambre", 2: "Hola", 3: "Tengo sed", 4: "Enciende la luz",
           5: "Llamar al cuidador", 6: "Siento dolor"}
 TECLAS_IMU = {"a": "izq", "d": "der", "w": "arriba", "s": "abajo"}
 
+sys.stdout.reconfigure(encoding="utf-8")     # en Windows, con la salida redirigida, cp1252 no tiene ♪ ni «»
+
 p = argparse.ArgumentParser()
 p.add_argument("--broker", default="localhost")
+p.add_argument("--puerto", type=int, default=1883)
 p.add_argument("--nodo", default="asistivo/nodo1")
 args = p.parse_args()
 N = args.nodo
@@ -73,7 +77,7 @@ c = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, client_id="esp32-nodo1-sim")
 c.will_set(f"{N}/estado", "offline", qos=1, retain=True)
 c.on_connect = al_conectar
 c.on_message = al_recibir
-c.connect(args.broker, 1883, keepalive=5)
+c.connect(args.broker, args.puerto, keepalive=5)
 c.loop_start()
 
 
