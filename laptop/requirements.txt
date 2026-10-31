@@ -1,3 +1,3 @@
 opencv-python
-mediapipe
+mediapipe>=0.10.14   # vision.py usa la API Tasks (FaceLandmarker); probado con 1.2.0 en Python 3.12
 paho-mqtt>=2.0
