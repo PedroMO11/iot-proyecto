@@ -8,6 +8,9 @@ const T = {
   imu: `${CONFIG.nodo}/imu/evento`,
   cmd: `${CONFIG.nodo}/cmd`,
   mirada: `${CONFIG.vision}/mirada`,
+  punto: `${CONFIG.vision}/punto`,
+  calibracion: `${CONFIG.vision}/calibracion`,
+  visionCmd: `${CONFIG.vision}/cmd`,
   modo: `${CONFIG.interfaz}/estado`,
   seleccion: `${CONFIG.interfaz}/seleccion`,
 };
@@ -24,6 +27,7 @@ const st = {
   fuente: null,                         // quién movió el cursor por última vez
   nodo: null,                           // "online" / "offline" (retenido por el ESP32)
   activacionesReposo: 0,
+  calibrando: null,                     // casilla que hay que mirar durante la calibración de la visión
 };
 window.st = st;                         // para inspeccionar desde la consola
 
@@ -42,9 +46,11 @@ for (const f of FRASES) {
 function render() {
   for (const f of FRASES) {
     const c = $(`casilla-${f.id}`);
-    c.classList.toggle("cursor", f.id === st.cursor);
+    c.classList.toggle("cursor", f.id === st.cursor && !st.calibrando);
     c.classList.toggle("objetivo", f.id === st.objetivo);
+    c.classList.toggle("calibrar", f.id === st.calibrando);
   }
+  document.body.classList.toggle("calibrando", st.calibrando !== null);
   $("estado-modo").textContent = `Modo: ${st.modo}`;
   $("estado-fuente").textContent = `Cursor: ${{ cabeza: "cabeza", mirada: "mirada", teclado: "teclado" }[st.fuente] || "—"}` +
     (st.visionActiva ? "" : " (mirada off)");
@@ -53,7 +59,10 @@ function render() {
   nodo.className = "pastilla " + (st.nodo === "online" ? "bien" : "mal");
 
   const aviso = $("aviso");
-  if (st.modo === "prueba" && st.objetivo) {
+  if (st.calibrando) {
+    aviso.textContent = `Calibrando la mirada · mire la casilla ${st.calibrando} sin mover la cabeza`;
+    aviso.className = "aviso";
+  } else if (st.modo === "prueba" && st.objetivo) {
     aviso.textContent = `Prueba · selecciona: «${frase(st.objetivo).texto}»`;
     aviso.className = "aviso";
   } else if (st.modo === "reposo") {
@@ -168,6 +177,21 @@ function cambiarModo() {
   render();
 }
 
+// ---- cursor de la mirada: punto donde mira el usuario (x, y relativos a la zona del menú) ----
+let ultimoPunto = 0;
+function moverPunto(m) {
+  const p = $("punto-mirada");
+  const visible = st.visionActiva && !st.calibrando && typeof m.x === "number";
+  p.classList.toggle("oculto", !visible);
+  if (!visible) return;
+  const r = $("menu").getBoundingClientRect();
+  const x = r.left + Math.min(1, Math.max(0, m.x)) * r.width;
+  const y = r.top + Math.min(1, Math.max(0, m.y)) * r.height;
+  p.style.transform = `translate(${x}px, ${y}px)`;
+  ultimoPunto = Date.now();
+}
+setInterval(() => { if (Date.now() - ultimoPunto > 1000) $("punto-mirada").classList.add("oculto"); }, 500);
+
 // ---- MQTT ----
 const cliente = new ClienteMQTT(CONFIG.broker, {
   clientId: "interfaz-" + Math.random().toString(16).slice(2, 8),
@@ -186,13 +210,33 @@ const cliente = new ClienteMQTT(CONFIG.broker, {
     else if (topic === T.emg && m.tipo === "confirmar") confirmar("emg");
     else if (topic === T.emg && m.tipo === "cancelar") cancelar("emg");
     else if (topic === T.imu) mover(m.dir, "cabeza");
-    else if (topic === T.mirada && st.visionActiva && m.region >= 1 && m.region <= 6) ponerCursor(m.region, "mirada");
+    else if (topic === T.mirada && st.visionActiva && !st.calibrando && m.region >= 1 && m.region <= 6) ponerCursor(m.region, "mirada");
+    else if (topic === T.punto) moverPunto(m);
+    else if (topic === T.calibracion) {
+      if (m.estado === "mirar") st.calibrando = m.region;
+      else if (m.estado === "centrar") {
+        const r = $("menu").getBoundingClientRect(), c = $("centro-mirada");
+        c.style.left = `${r.left + r.width / 2}px`;
+        c.style.top = `${r.top + r.height / 2}px`;
+        c.classList.remove("oculto");
+      }
+      else {
+        st.calibrando = null;
+        $("centro-mirada").classList.add("oculto");
+        if (m.estado === "listo") toast("Mirada calibrada");
+        else if (m.estado === "centrado") toast("Mirada recentrada");
+        else toast(`Calibración fallida: no se vio la cara en ${(m.faltan || []).join(", ")}`, "mal");
+      }
+      render();
+    }
   },
 });
 cliente.suscribir(T.estadoNodo, 1);
 cliente.suscribir(T.emg, 1);
 cliente.suscribir(T.imu, 1);
 cliente.suscribir(T.mirada, 0);
+cliente.suscribir(T.calibracion, 1);
+cliente.suscribir(T.punto, 0);
 cliente.conectar();
 
 // ---- teclado ----
@@ -204,6 +248,12 @@ document.addEventListener("keydown", (e) => {
   else if (e.key >= "1" && e.key <= "6") ponerCursor(Number(e.key), "teclado");
   else if (e.key === "m" || e.key === "M") cambiarModo();
   else if (e.key === "v" || e.key === "V") { st.visionActiva = !st.visionActiva; render(); }
+  else if (e.key === "o" || e.key === "O") {
+    if (cliente.publicar(T.visionCmd, { accion: "centrar" }, { qos: 1 })) toast("Mire el punto del centro");
+  }
+  else if (e.key === "c" || e.key === "C") {
+    if (cliente.publicar(T.visionCmd, { accion: "calibrar" }, { qos: 1 })) toast("Calibrando: siga la casilla marcada con la mirada");
+  }
   else if (e.key === "f" || e.key === "F") {
     if (document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen();
   } else return;

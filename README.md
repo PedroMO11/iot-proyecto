@@ -113,6 +113,10 @@ Todo el equipo debe respetar estos topics y formatos, para que cada parte pueda 
 | `asistivo/nodo1/ping` → `pong` | Dashboard → ESP32 | Dashboard | 0 | El ESP32 devuelve en `pong` el mismo texto que recibe en `ping` (ya lo hace `02b`). El dashboard mide así la latencia cada 2 s |
 | `asistivo/nodo1/actuadores` | ESP32 | Dashboard | 1, retenido | `{"luz":true}` *(opcional: estado del relé)* |
 | `asistivo/vision/mirada` | Visión | Interfaz | 0 | `{"region":4}` (1–6), o `{"region":null}` si no hay cara |
+| `asistivo/vision/punto` | Visión | Interfaz | 0 | `{"x":0.42,"y":0.71}` (0–1, relativos a la zona del menú), ~20 por segundo; `{"x":null}` sin cara |
+| `asistivo/vision/estado` | Visión | Dashboard | 0 | `{"fps":30,"cara":true,"calibrado":true,"region":4}`, cada 2 s |
+| `asistivo/vision/cmd` | Interfaz | Visión | 1 | `{"accion":"calibrar"}` o `{"accion":"centrar"}` |
+| `asistivo/vision/calibracion` | Visión | Interfaz, dashboard | 1 | `{"estado":"mirar","region":3}`, `"listo"`, `"centrar"`, `"centrado"` o `{"estado":"error","faltan":[2]}` |
 | `asistivo/interfaz/estado` | Interfaz | Dashboard | 1, retenido | `{"modo":"uso"}`, con `modo` = `uso`, `prueba` o `reposo` |
 | `asistivo/interfaz/seleccion` | Interfaz | Dashboard | 1 | `{"modo":"prueba","id":3,"frase":"Tengo sed","via":"emg","enviado":true,"objetivo":3,"acierto":true,"t_seleccion_ms":2300,"ts":...}` |
 
@@ -158,8 +162,8 @@ Todo el equipo debe respetar estos topics y formatos, para que cada parte pueda 
 │   ├── mosquitto.conf
 │   ├── pruebas/               ← latencia_mqtt.py, simulador_nodo.py (ESP32 simulado)
 │   ├── web/                   ← cliente MQTT por WebSocket y configuración (compartidos por interfaz y dashboard)
-│   ├── vision/                ← vision.py: MediaPipe, mirada → región 1..6
-│   │   ├── modelos/           ← face_landmarker.task (se descarga solo, NO se sube)
+│   ├── vision/                ← mirada.py: MediaPipe, punto de la mirada y casilla 1..6
+│   │   ├── face_landmarker.task ← modelo (se descarga solo, NO se sube)
 │   │   └── calibracion.json   ← calibración de la mirada (NO se sube)
 │   ├── interfaz/              ← menú 2×3 del paciente (página web)
 │   └── dashboard/             ← panel del cuidador: signos vitales y métricas (página web)
@@ -272,10 +276,12 @@ Checklist: [sección 5](CHECKLIST_ARMADO.md#5-actuadores).
 - Evitar `delay()` en el loop de sensores; usar temporización con `millis()` o `vTaskDelayUntil`.
 
 ### Paso 6: Laptop (en paralelo, no necesita hardware)
-- **`laptop/vision/`** ✅: `vision.py` con MediaPipe **FaceLandmarker** (API *Tasks*, 478 landmarks con iris: equivale a Face Mesh con `refine_landmarks=True`, que ya no existe en mediapipe ≥ 0.10.30). El modelo `face_landmarker.task` se descarga solo la primera vez. Calcula la posición del iris respecto a las comisuras del ojo y la asigna a una de las 6 regiones (2 × 3); publica en `vision/mirada` **solo cuando cambia la región**, para que la cabeza pueda seguir moviendo el cursor.
-  - **Calibración (tecla C):** se abre a pantalla completa una cuadrícula igual a la de la interfaz y se ilumina cada casilla; el usuario la mira 2,5 s sin mover la cabeza. Para cada eje se prueban varias señales (iris respecto a las comisuras, apertura del ojo, *blendshapes* `eyeLook*` de MediaPipe) y se queda con la que mejor separa columnas y filas; la separación se imprime y se guarda en `laptop/vision/calibracion.json` (no se sube). Si sale < 1,5, mejorar la luz o acercarse.
-  - **Suavizado:** media exponencial, histéresis entre casillas, 4 cuadros seguidos en la región nueva antes de cambiar, y se ignoran los parpadeos.
-  - Teclas: **C** calibrar, **R** volver a la calibración por defecto, **P** pausar la publicación, **Q** salir.
+- **`laptop/vision/`** ✅: `mirada.py`, webcam + **MediaPipe Face Landmarker** (`mp.solutions`/Face Mesh ya no existe en mediapipe 1.x). Rasgos de los ojos (posición del iris y *blendshapes* de mirada) → regresión ridge → **punto (x, y)** donde mira el usuario, suavizado; la casilla es la que queda bajo el punto, con voto por mayoría y 0,3 s de espera. Se descartan los parpadeos.
+  - **Calibración** (tecla **C** en la interfaz): 6 casillas, 2,5 s cada una; se guarda en `laptop/vision/calibracion.json` con las muestras (no se sube: es personal).
+  - **Recentrado** (tecla **O**): mirar 1 s el punto del centro corrige el desvío si la persona se movió.
+  - **Solo los ojos, no la cabeza:** con la cabeza, el modelo se apoyaba en ella y un giro mínimo movía el cursor un 11 % de la pantalla; solo con los ojos acertó 143/144 casillas en muestras no vistas (129/144 con cabeza).
+  - El modelo `face_landmarker.task` (3,7 MB) se descarga solo la primera vez.
+  - Límite: con una webcam distingue bien 6 zonas grandes, pero no tiene precisión de mouse.
 - **`laptop/interfaz/`** ✅: menú 2 × 3 a pantalla completa (página web). El cursor se mueve con `imu/evento` (una casilla), con `vision/mirada` (región directa) o con el teclado; `emg/evento` confirma o cancela; al confirmar publica en `cmd` y en `interfaz/seleccion`. Tras confirmar ignora confirmaciones durante 1,5 s. Tres modos (tecla **M**):
   - **uso:** normal;
   - **prueba:** marca un objetivo al azar y registra acierto o error y el tiempo de selección;
@@ -293,7 +299,7 @@ Checklist: [sección 5](CHECKLIST_ARMADO.md#5-actuadores).
 **Cómo correrlo:**
 1. `mosquitto -c laptop/mosquitto.conf -v`
 2. Abrir en el navegador `laptop/interfaz/index.html` (tecla **F**: pantalla completa) y `laptop/dashboard/index.html`. Funcionan sin internet: no usan librerías externas.
-3. **Mirada:** `uv run laptop/vision/vision.py`. Con el broker en otra laptop: `--broker <IP>`. Solo vista previa, sin publicar: `--sin-mqtt`. Calibrar con **C** antes de usarlo, sentado como se va a usar la interfaz.
+3. **Mirada:** `uv run laptop/vision/mirada.py` (abre una ventana con la cámara; `--sin-ventana` para ocultarla; con el broker en otra laptop, `--broker <IP>`). En la interfaz: **C** calibra, **O** recentra, **V** activa o desactiva la mirada.
 4. **Sin el ESP32:** `uv run laptop/pruebas/simulador_nodo.py` publica vitales, responde ping y ejecuta los comandos. Por teclado: `a/d/w/s` = cabeza, `c` = confirmar, `x` = cancelar, `n` = sin dedo (Enter tras cada tecla).
 5. **Dashboard desde otro equipo o un celular** en la misma red: en la laptop, `uv run python -m http.server 8000` desde la raíz del repo, y abrir `http://<IP-de-la-laptop>:8000/laptop/dashboard/?broker=ws://<IP-de-la-laptop>:9001` (abrir también los puertos 8000 y 9001 en el firewall).
 

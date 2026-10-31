@@ -1,6 +1,6 @@
 // dashboard.js : panel del cuidador. Se suscribe a asistivo/# y calcula las métricas del
 // README (paso 6) a partir de los mensajes: no solo los muestra, los procesa.
-//  - pulso y SpO₂: promedio de 10 s, alerta fuera de rango
+//  - pulso y SpO₂: promedio de 10 s, alarma fuera de rango
 //  - latencia MQTT: ping/pong con el ESP32 cada 2 s (RTT / 2)
 //  - tasa de aciertos y tiempo de selección: de las selecciones de la interfaz
 //  - activaciones accidentales: confirmaciones del EMG mientras la interfaz está en reposo
@@ -16,6 +16,8 @@ const T = {
   actuadores: `${CONFIG.nodo}/actuadores`,
   modo: `${CONFIG.interfaz}/estado`,
   seleccion: `${CONFIG.interfaz}/seleccion`,
+  visionEstado: `${CONFIG.vision}/estado`,
+  calibracion: `${CONFIG.vision}/calibracion`,
 };
 const VENTANA_MS = 5 * 60 * 1000;       // gráficos
 const PROMEDIO_MS = 10 * 1000;          // pulso y SpO₂
@@ -29,9 +31,11 @@ function datosNuevos() {
     vitales: [],                        // {t, bpm, spo2}
     latencias: [],                      // {t, ida}
     selecciones: [],                    // mensajes de interfaz/seleccion + t
-    eventos: [],                        // {t, origen, texto} (registro)
+    eventos: [],                        // {t, origen, texto, clase}
     nodo: { estado: null, desde: null, enLinea: 0, conocido: 0, caidas: 0 },
     modo: { actual: null, desde: null, reposoMs: 0 },
+    vision: null, visionT: 0,
+    luz: null,
     accidentales: 0,
     cancelaciones: 0,
     ultimoPing: 0, ultimoPong: 0,
@@ -45,9 +49,9 @@ const mediana = (v) => { const s = [...v].sort((a, b) => a - b); const n = s.len
 const percentil = (v, p) => { const s = [...v].sort((a, b) => a - b); return s.length ? s[Math.min(s.length - 1, Math.floor((p / 100) * s.length))] : null; };
 const promedio = (v) => (v.length ? v.reduce((a, b) => a + b, 0) / v.length : null);
 
-function registrar(origen, texto) {
-  d.eventos.unshift({ t: Date.now(), origen, texto });
-  if (d.eventos.length > 200) d.eventos.pop();
+function registrar(origen, texto, clase = "") {
+  d.eventos.unshift({ t: Date.now(), origen, texto, clase });
+  if (d.eventos.length > 300) d.eventos.pop();
 }
 
 // ---- estados que se acumulan en el tiempo ----
@@ -73,7 +77,7 @@ function alMensaje(topic, texto, { retain }) {
     acumularNodo(ahora);
     if (d.nodo.estado === "online" && m === "offline") d.nodo.caidas++;
     d.nodo.estado = m;
-    registrar("nodo", retain ? `estado (retenido): ${m}` : `estado: ${m}`);
+    registrar("nodo", retain ? `${m} (retenido)` : m, m === "offline" ? "mal" : "ok");
   } else if (topic === T.vitales) {
     const bpm = typeof m.bpm === "number" ? m.bpm : null, spo2 = typeof m.spo2 === "number" ? m.spo2 : null;
     d.vitales.push({ t: ahora, bpm, spo2 });
@@ -85,14 +89,14 @@ function alMensaje(topic, texto, { retain }) {
     if (m.tipo === "cancelar") d.cancelaciones++;
     const enReposo = m.tipo === "confirmar" && d.modo.actual === "reposo";
     if (enReposo) d.accidentales++;
-    registrar("EMG", `${m.tipo}${enReposo ? " (en reposo: accidental)" : ""}`);
+    registrar("emg", `${m.tipo}${enReposo ? "  ← accidental (reposo)" : ""}`, enReposo ? "mal" : "emg");
   } else if (topic === T.imu) {
-    registrar("IMU", `cabeza: ${m.dir}`);
+    registrar("imu", `cabeza ${m.dir}`);
   } else if (topic === T.cmd) {
     const f = m.accion === "frase" ? FRASES.find((x) => x.id === m.id) : null;
-    registrar("comando", f ? `frase ${m.id}: «${f.texto}»` : texto);
+    registrar("cmd", f ? `frase ${m.id} «${f.texto}»` : texto);
   } else if (topic === T.actuadores) {
-    if (typeof m.luz === "boolean") { $("p-luz").textContent = `Luz: ${m.luz ? "encendida" : "apagada"}`; $("p-luz").classList.remove("oculto"); }
+    if (typeof m.luz === "boolean") d.luz = m.luz;
   } else if (topic === T.modo) {
     acumularModo(ahora);
     d.modo.actual = m.modo;
@@ -100,20 +104,39 @@ function alMensaje(topic, texto, { retain }) {
   } else if (topic === T.seleccion) {
     d.selecciones.push({ ...m, t: ahora });
     if (m.modo !== "reposo") {
-      const extra = m.acierto === true ? " ✔ acierto" : m.acierto === false ? " ✘ error" : "";
-      registrar("interfaz", `selección ${m.id} por ${m.via}` + (m.t_seleccion_ms !== null ? ` en ${(m.t_seleccion_ms / 1000).toFixed(1)} s` : "") + extra);
+      const extra = m.acierto === true ? "  ✓ acierto" : m.acierto === false ? "  ✗ error" : "";
+      const tSel = typeof m.t_seleccion_ms === "number" ? ` en ${(m.t_seleccion_ms / 1000).toFixed(1)} s` : "";
+      registrar("interfaz", `selección ${m.id} por ${m.via}${tSel}${extra}`, m.acierto === false ? "mal" : m.acierto ? "ok" : "");
     }
+  } else if (topic === T.visionEstado) {
+    d.vision = m; d.visionT = ahora;
+  } else if (topic === T.calibracion) {
+    if (m.estado === "mirar" && m.region === 1) registrar("visión", "calibración iniciada");
+    else if (m.estado === "listo") registrar("visión", "calibración lista", "ok");
+    else if (m.estado === "error") registrar("visión", `calibración fallida (${(m.faltan || []).join(", ")})`, "mal");
   }
 }
 
-// ---- métricas ----
-function kpi(id, valor, detalle, estado, textoMeta) {
-  const k = $(id);
-  k.querySelector(".valor").innerHTML = valor;
-  if (detalle !== undefined) k.querySelector(".detalle").textContent = detalle;
-  const meta = k.querySelector(".meta");
-  meta.textContent = textoMeta;
-  meta.className = "meta" + (estado === true ? " bien" : estado === false ? " mal" : "");
+// ---- dibujo ----
+function fila(id, valor, detalle, cumple) {
+  const r = $(id);
+  r.querySelector(".val").textContent = valor;
+  r.querySelector(".det").textContent = detalle;
+  const ok = r.querySelector(".ok");
+  ok.textContent = cumple === true ? "cumple" : cumple === false ? "no cumple" : "";
+  ok.className = "ok" + (cumple === true ? " si" : cumple === false ? " no" : "");
+}
+
+function parametro(id, valor, texto, alarma) {
+  $(`v-${id}`).textContent = valor === null ? "--" : valor;
+  $(`d-${id}`).textContent = texto;
+  $(`p-${id}`).classList.toggle("alarma-param", alarma);
+  $(`p-${id}`).classList.toggle("sin-dato", valor === null);
+}
+
+function estado(id, clase, html) {
+  $(id).className = "estado " + clase;
+  $(id).innerHTML = `<i></i>${html}`;
 }
 
 function actualizar() {
@@ -122,76 +145,79 @@ function actualizar() {
   acumularModo(ahora);
   d.vitales = d.vitales.filter((v) => v.t > ahora - VENTANA_MS);
   d.latencias = d.latencias.filter((v) => v.t > ahora - VENTANA_MS);
+  $("s-reloj").textContent = hora(ahora);
 
-  // pulso y SpO₂
+  // signos vitales
   const rec = d.vitales.filter((v) => v.t > ahora - PROMEDIO_MS);
   const bpm = promedio(rec.map((v) => v.bpm).filter((x) => x !== null));
   const spo2 = promedio(rec.map((v) => v.spo2).filter((x) => x !== null));
-  const alertas = [];
-  if (bpm !== null && (bpm < ALERTAS.bpmMin || bpm > ALERTAS.bpmMax)) alertas.push(`pulso ${Math.round(bpm)} BPM`);
-  if (spo2 !== null && spo2 < ALERTAS.spo2Min) alertas.push(`SpO₂ ${spo2.toFixed(0)} %`);
+  const alarmaFC = bpm !== null && (bpm < ALERTAS.bpmMin || bpm > ALERTAS.bpmMax);
+  const alarmaSp = spo2 !== null && spo2 < ALERTAS.spo2Min;
   const sinDedo = rec.length > 0 && bpm === null;
-  kpi("k-bpm", bpm === null ? "—" : `${Math.round(bpm)} <small>BPM</small>`, sinDedo ? "sin dedo en el sensor" : "promedio de 10 s",
-      bpm === null ? null : !alertas.some((a) => a.startsWith("pulso")), `rango ${ALERTAS.bpmMin}–${ALERTAS.bpmMax}`);
-  kpi("k-spo2", spo2 === null ? "—" : `${spo2.toFixed(0)} <small>%</small>`, undefined,
-      spo2 === null ? null : spo2 >= ALERTAS.spo2Min, `alerta < ${ALERTAS.spo2Min} %`);
-  $("k-bpm").classList.toggle("alerta-kpi", alertas.some((a) => a.startsWith("pulso")));
-  $("k-spo2").classList.toggle("alerta-kpi", alertas.some((a) => a.startsWith("SpO")));
-  $("alerta").textContent = alertas.length ? `⚠ Revisar al paciente: ${alertas.join(" · ")}` : "";
+  const sinDatos = rec.length === 0;
+  const pie = sinDatos ? "sin datos del nodo" : sinDedo ? "sin dedo en el sensor" : "promedio de 10 s";
+  parametro("bpm", bpm === null ? null : Math.round(bpm), pie, alarmaFC);
+  parametro("spo2", spo2 === null ? null : Math.round(spo2), pie, alarmaSp);
+  const alertas = [];
+  if (alarmaFC) alertas.push(`FC ${Math.round(bpm)} lpm`);
+  if (alarmaSp) alertas.push(`SpO₂ ${Math.round(spo2)} %`);
+  $("alerta").textContent = `ALARMA · revisar al paciente · ${alertas.join(" · ")}`;
   $("alerta").classList.toggle("oculto", alertas.length === 0);
 
-  // latencia
-  const ult = d.latencias.slice(-30).map((v) => v.ida);
-  const sinPong = d.ultimoPing - d.ultimoPong > 5000 && d.nodo.estado === "online";
-  const latMed = mediana(ult);
-  kpi("k-latencia", latMed === null ? "—" : `${Math.round(latMed)} <small>ms</small>`,
-      sinPong ? "el nodo no responde al ping" : latMed === null ? "esperando ping/pong" : `p90 ${Math.round(percentil(ult, 90))} ms · ${ult.length} muestras`,
-      latMed === null ? null : latMed < METAS.latencia, `meta < ${METAS.latencia} ms`);
+  // estado de la cabecera
+  const n = d.nodo;
+  if (n.estado === "online") estado("s-nodo", "bien", "<b>Nodo</b> en línea");
+  else if (n.estado === "offline") estado("s-nodo", "mal", "<b>Nodo</b> DESCONECTADO");
+  else estado("s-nodo", "", "<b>Nodo</b> sin datos");
 
-  // aciertos (solo modo prueba)
-  const pruebas = d.selecciones.filter((s) => s.modo === "prueba" && s.acierto !== null && s.acierto !== undefined);
+  // ficha del sistema
+  const ult = d.latencias.slice(-30).map((v) => v.ida);
+  const latMed = mediana(ult);
+  const sinPong = d.ultimoPing - d.ultimoPong > 5000 && n.estado === "online";
+  $("m-latencia").innerHTML = latMed === null ? (sinPong ? "el nodo no responde al ping" : "—")
+    : `${Math.round(latMed)} ms <small>p90 ${Math.round(percentil(ult, 90))} · ${ult.length} ping</small>`;
+  $("m-latencia").className = latMed !== null && latMed >= METAS.latencia ? "mal" : "";
+  $("m-disp").innerHTML = n.conocido > 0 ? `${((100 * n.enLinea) / n.conocido).toFixed(1)} % <small>de ${(n.conocido / 60000).toFixed(1)} min</small>` : "—";
+  $("m-caidas").textContent = n.caidas;
+  $("m-modo").textContent = d.modo.actual ? `modo ${d.modo.actual}` : "sin datos";
+  const v = d.vision;
+  if (!v || ahora - d.visionT > 6000 || v.activo === false) $("m-vision").innerHTML = "inactiva";
+  else $("m-vision").innerHTML = `${v.cara ? "cara detectada" : "<span style='color:var(--ambar)'>sin cara</span>"} <small>${v.fps} fps · ${v.calibrado ? "calibrada" : "sin calibrar"}${v.region ? ` · casilla ${v.region}` : ""}</small>`;
+  $("m-luz").textContent = d.luz === null ? "—" : d.luz ? "encendida" : "apagada";
+
+  // pruebas de uso
+  const pruebas = d.selecciones.filter((s) => s.modo === "prueba" && typeof s.acierto === "boolean");
   const ok = pruebas.filter((s) => s.acierto).length;
   const tasa = pruebas.length ? (100 * ok) / pruebas.length : null;
-  kpi("k-aciertos", tasa === null ? "—" : `${tasa.toFixed(0)} <small>%</small>`, `${ok} de ${pruebas.length} en modo prueba`,
-      tasa === null ? null : tasa >= METAS.aciertos, `meta ≥ ${METAS.aciertos} %`);
-
-  // tiempo de selección
+  fila("r-aciertos", tasa === null ? "—" : `${tasa.toFixed(0)} %`, `${ok} de ${pruebas.length} en modo prueba`,
+       tasa === null ? null : tasa >= METAS.aciertos);
   const tiempos = d.selecciones.filter((s) => s.modo !== "reposo" && typeof s.t_seleccion_ms === "number").map((s) => s.t_seleccion_ms);
   const tMed = mediana(tiempos);
-  kpi("k-tsel", tMed === null ? "—" : `${(tMed / 1000).toFixed(1)} <small>s</small>`,
-      tMed === null ? "mediana" : `mediana de ${tiempos.length} · máx. ${(Math.max(...tiempos) / 1000).toFixed(1)} s`,
-      tMed === null ? null : tMed <= METAS.tSeleccion, `meta ≤ ${METAS.tSeleccion / 1000} s`);
-
-  // activaciones accidentales
+  fila("r-tsel", tMed === null ? "—" : `${(tMed / 1000).toFixed(1)} s`,
+       tMed === null ? "mediana" : `mediana de ${tiempos.length} · máx. ${(Math.max(...tiempos) / 1000).toFixed(1)} s`,
+       tMed === null ? null : tMed <= METAS.tSeleccion);
   const minReposo = d.modo.reposoMs / 60000;
   const tasaAcc = minReposo >= 1 ? (d.accidentales / minReposo) * 5 : null;
-  kpi("k-accidentales", tasaAcc === null ? "—" : `${tasaAcc.toFixed(1)}`,
-      minReposo < 1 ? `${d.accidentales} en ${minReposo.toFixed(1)} min de reposo (mínimo 1 min)` : `${d.accidentales} en ${minReposo.toFixed(1)} min de reposo`,
-      tasaAcc === null ? null : tasaAcc <= METAS.accidentales, `meta ≤ ${METAS.accidentales} / 5 min`);
+  fila("r-accidentales", tasaAcc === null ? "—" : `${tasaAcc.toFixed(1)}`,
+       `${d.accidentales} en ${minReposo.toFixed(1)} min de reposo${minReposo < 1 ? " (mín. 1 min)" : ""}`,
+       tasaAcc === null ? null : tasaAcc <= METAS.accidentales);
+  $("r-enviadas").querySelector(".val").textContent =
+    `${d.selecciones.filter((s) => s.modo !== "reposo" && s.enviado).length} · ${d.cancelaciones}`;
 
-  // cabecera y disponibilidad
-  const n = d.nodo;
-  $("p-nodo").textContent = n.estado === "online" ? "Nodo: en línea" : n.estado === "offline" ? "Nodo: DESCONECTADO" : "Nodo: sin datos";
-  $("p-nodo").className = "pastilla " + (n.estado === "online" ? "bien" : n.estado === "offline" ? "mal" : "");
-  $("p-interfaz").textContent = d.modo.actual ? `Interfaz: modo ${d.modo.actual}` : "Interfaz: sin datos";
-  $("d-disponibilidad").textContent = n.conocido > 0 ? `${((100 * n.enLinea) / n.conocido).toFixed(1)} % de ${(n.conocido / 60000).toFixed(1)} min` : "—";
-  $("d-caidas").textContent = n.caidas;
-  $("d-enviadas").textContent = d.selecciones.filter((s) => s.modo !== "reposo" && s.enviado).length;
-  $("d-cancelaciones").textContent = d.cancelaciones;
-  $("d-reposo").textContent = `${minReposo.toFixed(1)} min`;
-
-  $("t-eventos").innerHTML = d.eventos.slice(0, 40)
-    .map((e) => `<tr><td>${hora(e.t)}</td><td>${e.origen}</td><td>${e.texto.replace(/</g, "&lt;")}</td></tr>`).join("");
+  // registro
+  const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;");
+  $("t-eventos").innerHTML = d.eventos.slice(0, 60)
+    .map((e) => `<span class="o">${hora(e.t)}  ${e.origen.padEnd(9)}</span><span class="${e.clase}">${esc(e.texto)}</span>`).join("\n");
 
   // gráficos
   const css = getComputedStyle(document.documentElement);
   dibujarGrafico($("g-vitales"), [
-    { datos: d.vitales.map((v) => [v.t, v.bpm]), color: css.getPropertyValue("--bpm"), rango: [40, 140], eje: "izq" },
-    { datos: d.vitales.map((v) => [v.t, v.spo2]), color: css.getPropertyValue("--spo2"), rango: [80, 100], eje: "der" },
+    { datos: d.vitales.map((x) => [x.t, x.bpm]), color: css.getPropertyValue("--fc"), rango: [40, 140], eje: "izq" },
+    { datos: d.vitales.map((x) => [x.t, x.spo2]), color: css.getPropertyValue("--spo2"), rango: [80, 100], eje: "der" },
   ], { ventanaMs: VENTANA_MS, ahora });
-  const maxLat = Math.max(400, ...d.latencias.map((v) => v.ida));
+  const maxLat = Math.max(400, ...d.latencias.map((x) => x.ida));
   dibujarGrafico($("g-latencia"), [
-    { datos: d.latencias.map((v) => [v.t, v.ida]), color: css.getPropertyValue("--lat"), rango: [0, Math.ceil(maxLat / 100) * 100], tipo: "puntos" },
+    { datos: d.latencias.map((x) => [x.t, x.ida]), color: css.getPropertyValue("--lat"), rango: [0, Math.ceil(maxLat / 100) * 100], tipo: "puntos" },
   ], { ventanaMs: VENTANA_MS, ahora, lineas: [{ valor: METAS.latencia, color: css.getPropertyValue("--mal") }] });
 }
 
@@ -212,19 +238,22 @@ function exportarCSV() {
 
 $("b-csv").onclick = exportarCSV;
 $("b-reiniciar").onclick = () => {
-  const { estado } = d.nodo, actual = d.modo.actual;
+  const { estado: e } = d.nodo, actual = d.modo.actual, vision = d.vision, visionT = d.visionT, luz = d.luz;
   d = datosNuevos();
-  d.nodo.estado = estado; d.nodo.desde = Date.now();
+  d.nodo.estado = e; d.nodo.desde = Date.now();
   d.modo.actual = actual; d.modo.desde = Date.now();
+  d.vision = vision; d.visionT = visionT; d.luz = luz;
   registrar("panel", "métricas reiniciadas");
 };
-$("nombre-nodo").textContent = CONFIG.nodo;
+$("nombre-nodo").textContent = CONFIG.nodo.split("/").pop();
+$("l-bpm").innerHTML = `${ALERTAS.bpmMax}<br>${ALERTAS.bpmMin}`;
+$("l-spo2").innerHTML = `<br>${ALERTAS.spo2Min}`;
 
 // ---- MQTT ----
 const cliente = new ClienteMQTT(CONFIG.broker, {
   clientId: "dashboard-" + ID,
-  onConnect: () => { $("p-broker").textContent = "Broker: conectado"; $("p-broker").className = "pastilla bien"; registrar("panel", "conectado al broker"); },
-  onClose: () => { $("p-broker").textContent = "Broker: desconectado"; $("p-broker").className = "pastilla mal"; registrar("panel", "sin conexión al broker"); },
+  onConnect: () => { estado("s-broker", "bien", "<b>Broker</b> conectado"); registrar("panel", "conectado al broker", "ok"); },
+  onClose: () => { estado("s-broker", "mal", "<b>Broker</b> desconectado"); registrar("panel", "sin conexión al broker", "mal"); },
   onMessage: alMensaje,
 });
 cliente.suscribir("asistivo/#", 1);

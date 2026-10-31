@@ -3,5 +3,7 @@ __pycache__/
 .venv/
 *.pyc
 .pio/
-laptop/vision/modelos/
+
+# Visión: modelo de MediaPipe (se descarga, ver README) y calibración personal
+laptop/vision/face_landmarker.task
 laptop/vision/calibracion.json
