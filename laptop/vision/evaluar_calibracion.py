@@ -2,18 +2,21 @@
 #  - tabla de variantes de modelo con su error en validación cruzada (dejando fuera un punto entero)
 #  - error por punto de la pantalla y deriva del centro (inicio vs. fin de la calibración)
 #  - figura: dónde predice el modelo cada punto cuando ese punto no se usó para entrenar
-# Uso:  .venv/bin/python laptop/vision/evaluar_calibracion.py [salida.png]
+# Uso:  uv run laptop/vision/evaluar_calibracion.py [salida.png]
 import json
 import pathlib
 import sys
 
-import matplotlib
 import numpy as np
 
 import modelo as M
 
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt  # noqa: E402
+try:                                    # matplotlib no está en pyproject.toml: la figura es opcional
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+except ImportError:
+    plt = None
 
 AQUI = pathlib.Path(__file__).resolve().parent
 d = json.loads((AQUI / "calibracion.json").read_text())
@@ -48,6 +51,8 @@ if d.get("calidad"):
     q = d["calidad"]
     print(f"Comprobación en los 6 centros de casilla: {q['acierto']:.0f} % de casillas acertadas · error x {q['error_x']:.1f} %, y {q['error_y']:.1f} %")
 
+if plt is None:
+    sys.exit("\n(sin figura: falta matplotlib; con uv: uv run --with matplotlib laptop/vision/evaluar_calibracion.py)")
 salida = sys.argv[1] if len(sys.argv) > 1 else str(AQUI / "evaluacion_mirada.png")
 fig, ax = plt.subplots(figsize=(9, 5.4))
 for c in range(1, 3):

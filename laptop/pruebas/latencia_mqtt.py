@@ -1,9 +1,15 @@
 # Mide la latencia MQTT ida y vuelta (laptop -> ESP32 -> laptop)
+# Uso:  uv run laptop/pruebas/latencia_mqtt.py [--broker localhost] [--puerto 1883] [-n 30]
+import argparse
 import time
 import paho.mqtt.client as mqtt
 
-BROKER = "localhost"
-N = 30
+p = argparse.ArgumentParser()
+p.add_argument("--broker", default="localhost")
+p.add_argument("--puerto", type=int, default=1883)
+p.add_argument("-n", type=int, default=30, help="cantidad de pings, uno por segundo")
+args = p.parse_args()
+N = args.n
 rtts = []
 
 
@@ -15,7 +21,7 @@ def al_recibir(cliente, datos, msg):
 
 c = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
 c.on_message = al_recibir
-c.connect(BROKER, 1883)
+c.connect(args.broker, args.puerto)
 c.subscribe("asistivo/nodo1/pong", qos=1)
 c.loop_start()
 for _ in range(N):

@@ -12,7 +12,7 @@
 # luego validación en los 6 centros de casilla. El modelo (qué rasgos y cuánta regularización) se
 # elige solo, con validación cruzada dejando fuera un punto entero. Recentrado (tecla O): 1 punto.
 #
-# Uso:  .venv/bin/python laptop/vision/mirada.py [--broker localhost] [--camara 0] [--sin-ventana]
+# Uso:  uv run laptop/vision/mirada.py [--broker localhost] [--puerto 1883] [--camara 0] [--sin-ventana]
 # Teclas en la ventana: c = calibrar · o = recentrar · q = salir
 import argparse
 import json
@@ -192,6 +192,7 @@ def dibujar(cuadro, r, cal, p, region, texto, fps):
 def main():
     a = argparse.ArgumentParser()
     a.add_argument("--broker", default="localhost")
+    a.add_argument("--puerto", type=int, default=1883)
     a.add_argument("--camara", type=int, default=0)
     a.add_argument("--sin-ventana", action="store_true")
     args = a.parse_args()
@@ -214,7 +215,7 @@ def main():
         except (json.JSONDecodeError, AttributeError):
             pass
     c.on_message = al_recibir
-    c.connect(args.broker, 1883)
+    c.connect(args.broker, args.puerto)
     c.loop_start()
     avisar = lambda d: c.publish(f"{TOPIC}/calibracion", json.dumps(d), qos=1)
 
