@@ -65,6 +65,9 @@ def al_recibir(c, datos, msg):
             accion = "luz"
         elif n == 5:
             accion = "alerta"
+    if accion in ("calibrar_emg", "calibrar_imu"):
+        print(f"[sim] {accion}: listo")
+        return
     if accion == "luz":
         estado["luz"] = not estado["luz"]
         print(f"[sim] relé → luz {'ENCENDIDA' if estado['luz'] else 'apagada'}")
@@ -81,6 +84,16 @@ c.connect(args.broker, args.puerto, keepalive=5)
 c.loop_start()
 
 
+def diagnostico():                               # como nodo_asistivo: estado interno cada 5 s
+    while True:
+        c.publish(f"{N}/diag", json.dumps({
+            "emg": {"calibrado": True, "envolvente": random.randint(30, 45), "umbral": 90},
+            "imu": {"presente": True, "pitch": round(random.gauss(0, 1.5), 1), "roll": round(random.gauss(0, 1.5), 1)},
+            "pulso": {"presente": True, "ir": random.randint(100000, 110000) if estado["dedo"] else random.randint(200, 400)},
+            "parlante": True, "rssi": -55, "heap": 180000}))
+        time.sleep(5)
+
+
 def vitales():
     while True:
         t = time.time()
@@ -94,6 +107,7 @@ def vitales():
 
 
 threading.Thread(target=vitales, daemon=True).start()
+threading.Thread(target=diagnostico, daemon=True).start()
 print("[sim] a/d/w/s = cabeza · c = confirmar · x = cancelar · n = dedo · q = salir (Enter tras cada tecla)")
 try:
     while True:

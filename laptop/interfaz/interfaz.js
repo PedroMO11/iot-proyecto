@@ -253,6 +253,12 @@ document.addEventListener("keydown", (e) => {
   else if (e.key >= "1" && e.key <= "6") ponerCursor(Number(e.key), "teclado");
   else if (e.key === "m" || e.key === "M") cambiarModo();
   else if (e.key === "v" || e.key === "V") { st.visionActiva = !st.visionActiva; render(); }
+  else if (e.key === "e" || e.key === "E") {
+    if (cliente.publicar(T.cmd, { accion: "calibrar_emg" }, { qos: 1 })) toast("EMG: relaje la mandíbula 6 s");
+  }
+  else if (e.key === "i" || e.key === "I") {
+    if (cliente.publicar(T.cmd, { accion: "calibrar_imu" }, { qos: 1 })) toast("Cabeza: quédese quieto 3 s en posición neutra");
+  }
   else if (e.key === "k" || e.key === "K") {
     if (cliente.publicar(T.visionCmd, { accion: "validar" }, { qos: 1 })) toast("Comprobando la precisión: siga los puntos verdes");
   }

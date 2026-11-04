@@ -14,6 +14,7 @@ const T = {
   ping: `${CONFIG.nodo}/ping`,
   pong: `${CONFIG.nodo}/pong`,
   actuadores: `${CONFIG.nodo}/actuadores`,
+  diag: `${CONFIG.nodo}/diag`,
   modo: `${CONFIG.interfaz}/estado`,
   seleccion: `${CONFIG.interfaz}/seleccion`,
   visionEstado: `${CONFIG.vision}/estado`,
@@ -36,6 +37,7 @@ function datosNuevos() {
     modo: { actual: null, desde: null, reposoMs: 0 },
     vision: null, visionT: 0,
     luz: null,
+    diag: null, diagT: 0,
     accidentales: 0,
     cancelaciones: 0,
     ultimoPing: 0, ultimoPong: 0,
@@ -95,6 +97,8 @@ function alMensaje(topic, texto, { retain }) {
   } else if (topic === T.cmd) {
     const f = m.accion === "frase" ? FRASES.find((x) => x.id === m.id) : null;
     registrar("cmd", f ? `frase ${m.id} «${f.texto}»` : texto);
+  } else if (topic === T.diag) {
+    d.diag = m; d.diagT = ahora;
   } else if (topic === T.actuadores) {
     if (typeof m.luz === "boolean") d.luz = m.luz;
   } else if (topic === T.modo) {
@@ -187,6 +191,15 @@ function actualizar() {
     $("m-vision").innerHTML = `${v.cara ? "cara detectada" : `<span style='color:var(--ambar)'>sin cara${v.brillo < 60 ? " · poca luz" : ""}</span>`} <small>${v.fps} fps · ${cal}${v.region ? ` · casilla ${v.region}` : ""}</small>`;
   }
   $("m-luz").textContent = d.luz === null ? "—" : d.luz ? "encendida" : "apagada";
+  const g = d.diag && ahora - d.diagT < 12000 ? d.diag : null;      // el nodo lo publica cada 5 s
+  const sinDiag = "sin datos del nodo";
+  $("m-emg").innerHTML = !g ? sinDiag : !g.emg.calibrado ? "<span style='color:var(--ambar)'>calibrando (relajar 6 s)</span>"
+    : `${g.emg.envolvente} <small>umbral ${g.emg.umbral}</small>`;
+  $("m-cabeza").innerHTML = !g ? sinDiag : !g.imu.presente ? "<span style='color:var(--mal)'>no responde</span>"
+    : `${g.imu.pitch > 0 ? "+" : ""}${g.imu.pitch}° / ${g.imu.roll > 0 ? "+" : ""}${g.imu.roll}° <small>adelante / lado</small>`;
+  $("m-pulso").innerHTML = !g ? sinDiag : !g.pulso.presente ? "<span style='color:var(--mal)'>no responde</span>"
+    : g.pulso.ir > 50000 ? `dedo puesto <small>IR ${g.pulso.ir}</small>` : `sin dedo <small>IR ${g.pulso.ir}</small>`;
+  $("m-parlante").innerHTML = !g || g.parlante === undefined ? sinDiag : g.parlante ? "conectado" : "<span style='color:var(--ambar)'>desconectado</span>";
 
   // pruebas de uso
   const pruebas = d.selecciones.filter((s) => s.modo === "prueba" && typeof s.acierto === "boolean");
@@ -241,11 +254,11 @@ function exportarCSV() {
 
 $("b-csv").onclick = exportarCSV;
 $("b-reiniciar").onclick = () => {
-  const { estado: e } = d.nodo, actual = d.modo.actual, vision = d.vision, visionT = d.visionT, luz = d.luz;
+  const { estado: e } = d.nodo, actual = d.modo.actual, vision = d.vision, visionT = d.visionT, luz = d.luz, diag = d.diag, diagT = d.diagT;
   d = datosNuevos();
   d.nodo.estado = e; d.nodo.desde = Date.now();
   d.modo.actual = actual; d.modo.desde = Date.now();
-  d.vision = vision; d.visionT = visionT; d.luz = luz;
+  d.vision = vision; d.visionT = visionT; d.luz = luz; d.diag = diag; d.diagT = diagT;
   registrar("panel", "métricas reiniciadas");
 };
 $("nombre-nodo").textContent = CONFIG.nodo.split("/").pop();

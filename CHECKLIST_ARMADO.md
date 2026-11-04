@@ -17,6 +17,7 @@ El código de cada prueba está en [firmware/pruebas/](firmware/pruebas/) y en [
 4. [Sensores](#4-sensores)
 5. [Actuadores](#5-actuadores)
 6. [Registro de resultados](#6-registro-de-resultados)
+7. [Prueba de conjunto: el sistema completo](#7-prueba-de-conjunto-el-sistema-completo)
 
 ---
 
@@ -335,3 +336,74 @@ Completar a medida que se prueba. Sirve como evidencia para el informe final.
 | EMG: falsos en 5 min de reposo | | | Meta ≤ 1 |
 | Relé: lógica (HIGH o LOW = encendido) | 2026-10-28 | ✅ LOW | JQC3F-05VDC-C; conmuta solo con VCC del módulo a 3V3 (provisional, falta transistor). Sin carga de 12 V todavía |
 | Buzzer | 2026-10-28 | ⏳ | Activo, suena a 5 V directo. Falta el transistor para controlarlo desde D27 |
+
+---
+
+## 7. Prueba de conjunto: el sistema completo
+
+Firmware: [firmware/nodo_asistivo/](firmware/nodo_asistivo/nodo_asistivo.ino). Une todo lo aprobado en las secciones 1–5. **Se prueba por etapas:** si algo falla, se desactiva ese módulo en `config.h` (`USAR_AUDIO`, `USAR_EMG`, `USAR_IMU`, `USAR_PULSO` en 0) y se sigue con el resto.
+
+### 7.0 Cableado final (USB desconectado)
+
+| Componente | Conexión |
+|---|---|
+| Rieles | **3V3** → EMG, MPU6050, MAX30102 · **VIN (5 V)** → relé y buzzer · **los dos − unidos al GND** (nunca unir los +) |
+| EMG SEN0240 | rojo 3V3 · negro GND · azul **D34** |
+| MPU6050 y MAX30102 | VCC/VIN 3V3 · GND · SDA **D21** · SCL **D22** (bus compartido; cable largo hasta la vincha y el dedo) |
+| Relé | VCC **5 V** · GND · IN → **colector de Q1** |
+| Q1 (2N2222) | **D26 → 1 kΩ → base** · emisor GND · colector → IN del relé. Ahora el relé se enciende con **HIGH** |
+| Buzzer | + **5 V** · − → **colector de Q2** |
+| Q2 (2N2222) | **D27 → 1 kΩ → base** · emisor GND |
+| Carga del relé | cable + de la lámpara USB cortado: un extremo a **COM**, el otro a **NO** |
+
+Patas del 2N2222 (cara plana hacia uno): **E – B – C**. Si con D26 en LOW el relé no se apaga, poner **10 kΩ entre IN y 5 V**.
+
+### 7.1 Preparación
+- [ ] Hotspot del celular; la laptop conectada a él. IP de la laptop: `ip -4 addr` (Linux) o `ipconfig`.
+- [ ] Firewall: puerto **1883** abierto (sección 3).
+- [ ] `firmware/nodo_asistivo/config.h` copiado de `config.example.h`: WiFi, `MQTT_HOST` = IP de la laptop, `PARLANTE` = parte del nombre (`"xiaomi"`), `RELE_ENCENDIDO HIGH`.
+- [ ] Cargar `nodo_asistivo` con **Partition Scheme: Huge APP**. En Linux: **`herramientas/cargar_nodo.sh`** pone sola la IP actual de la laptop en `MQTT_HOST`, compila y carga (avisa si la red o el firewall no cuadran).
+- [ ] Laptop: **`laptop/iniciar.sh`** arranca el broker y abre la interfaz y el dashboard (`--vision` suma la mirada; `--simulador`, el ESP32 simulado). A mano: `mosquitto -c laptop/mosquitto.conf -v` y abrir `laptop/interfaz/index.html` y `laptop/dashboard/index.html`.
+
+### 7.2 Etapa 1: nodo y red
+- [ ] Monitor Serie: `[wifi] conectado`, `[mqtt] conectado`, `[imu] MPU6050 encontrado`, `[pulso] MAX30102 encontrado`, `[emg] listo: μ=… umbral=…` (mandíbula relajada los primeros 6 s).
+- [ ] Dashboard: **Nodo en línea**; la ficha muestra EMG, cabeza, sensor de pulso y parlante (llegan cada 5 s por `nodo1/diag`); hay latencia (ping/pong).
+- [ ] Desconectar el USB → el dashboard marca **DESCONECTADO** en ≤ 8 s (LWT). Reconectar → vuelve solo.
+
+### 7.3 Etapa 2: actuadores por MQTT (desde la interfaz, con el teclado)
+- [ ] Flechas + **Enter** en cada casilla: suena la frase 1–6 en el parlante.
+- [ ] Casilla **4** («Enciende la luz»): la lámpara se enciende; otra vez, se apaga. El dashboard muestra **Luz encendida/apagada**.
+- [ ] Casilla **5** («Llamar al cuidador»): el buzzer pita 2 s.
+
+### 7.4 Etapa 3: sensores al dashboard
+- [ ] **Pulso:** dedo en el MAX30102 (fijo con liga) → en ~10 s aparecen FC y SpO₂. Comparar con un reloj u oxímetro: anotar en la sección 6.
+- [ ] **Cabeza:** con la vincha puesta, la fila «Cabeza» cambia al inclinar (adelante = primer número +, izquierda = segundo −). Si sale al revés o cruzado: `IMU_SIGNO_*` o `IMU_INTERCAMBIAR` en `config.h`. Tecla **I** de la interfaz: nueva posición neutra.
+- [ ] **EMG:** la fila «EMG» sube por encima del umbral al apretar la mandíbula y vuelve abajo al relajar. Si el reposo está cerca del umbral: tecla **E** (recalibrar) con la mandíbula relajada.
+
+### 7.5 Etapa 4: entradas del paciente en la interfaz
+- [ ] Inclinar la cabeza: el cursor se mueve **una** casilla por gesto (sin pasos dobles).
+- [ ] Apretón corto de mandíbula: **confirma** (suena la frase). Apretón largo (> 1 s): **cancela**.
+- [ ] Hablar, tragar y mover la cabeza: no confirma (o casi nunca).
+- [ ] *(Opcional)* Mirada: `uv run laptop/vision/mirada.py`, calibrar con **C**, comprobar con **K**.
+
+### 7.6 Etapa 5: escenarios completos (la demo)
+- [ ] «Enciende la luz»: llegar a la casilla 4 con la cabeza (o la mirada) y apretar la mandíbula → frase + lámpara.
+- [ ] «Llamar al cuidador»: casilla 5 → frase + buzzer + aparece en el registro del dashboard.
+- [ ] Cancelar: elegir una casilla y mantener el apretón > 1 s → no se envía nada.
+- [ ] Alarma de signos vitales: `mosquitto_pub -t asistivo/nodo1/vitales -m '{"bpm":135,"spo2":89}'` varias veces → el dashboard muestra la alarma.
+- [ ] Apagar y prender el parlante, y desconectar el WiFi un momento: el sistema se recupera solo.
+
+### 7.7 Etapa 6: mediciones para el informe
+- [ ] **Modo prueba** (tecla **M**): 20 selecciones con cabeza + mandíbula → tasa de aciertos (meta ≥ 90 %) y tiempo de selección (meta ≤ 5 s).
+- [ ] **Modo reposo**: 5 min sentado, hablando normal → activaciones accidentales (meta ≤ 1 / 5 min).
+- [ ] **Estabilidad**: 10 min con todo encendido → sin reinicios ni desconexiones; latencia (meta < 300 ms).
+- [ ] **Exportar CSV** en el dashboard y guardarlo en `docs/resultados/`.
+
+| Prueba de conjunto | Fecha | Resultado | Notas |
+|---|---|---|---|
+| Etapa 1: nodo, red y LWT | | | |
+| Etapa 2: frases, luz, buzzer por MQTT | | | |
+| Etapa 3: pulso / cabeza / EMG en el dashboard | | | |
+| Etapa 4: cabeza mueve el cursor, mandíbula confirma | | | |
+| Etapa 5: escenarios de la demo | | | |
+| Etapa 6: aciertos · tiempo · accidentales · latencia | | | |

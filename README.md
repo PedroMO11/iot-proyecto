@@ -111,7 +111,8 @@ Todo el equipo debe respetar estos topics y formatos, para que cada parte pueda 
 | `asistivo/nodo1/cmd` | Interfaz | ESP32 | 1 | `{"accion":"frase","id":3}`, `{"accion":"luz","estado":"toggle"}` o `{"accion":"alerta"}` |
 | `asistivo/nodo1/estado` | ESP32 (LWT) | Interfaz, dashboard | 1, retenido | `"online"` / `"offline"` |
 | `asistivo/nodo1/ping` → `pong` | Dashboard → ESP32 | Dashboard | 0 | El ESP32 devuelve en `pong` el mismo texto que recibe en `ping` (ya lo hace `02b`). El dashboard mide así la latencia cada 2 s |
-| `asistivo/nodo1/actuadores` | ESP32 | Dashboard | 1, retenido | `{"luz":true}` *(opcional: estado del relé)* |
+| `asistivo/nodo1/actuadores` | ESP32 | Dashboard | 1, retenido | `{"luz":true}` (estado del relé) |
+| `asistivo/nodo1/diag` | ESP32 | Dashboard | 0 | Cada 5 s: `{"emg":{"calibrado","envolvente","umbral"},"imu":{"presente","pitch","roll"},"pulso":{"presente","ir"},"parlante","rssi","heap"}` |
 | `asistivo/vision/mirada` | Visión | Interfaz | 0 | `{"region":4}` (1–6), o `{"region":null}` si no hay cara |
 | `asistivo/vision/punto` | Visión | Interfaz | 0 | `{"x":0.42,"y":0.71}` (0–1, relativos a la zona del menú), ~20 por segundo; `{"x":null}` sin cara |
 | `asistivo/vision/estado` | Visión | Dashboard | 0 | `{"fps":30,"cara":true,"calibrado":true,"region":4}`, cada 2 s |
@@ -123,7 +124,7 @@ Todo el equipo debe respetar estos topics y formatos, para que cada parte pueda 
 - `ts` = `millis()` del ESP32. Sirve para medir la latencia.
 - El ESP32 registra el Last Will (LWT) `"offline"` al conectarse y publica `"online"` apenas conecta.
 - Para revisar todo el tráfico desde la laptop: `mosquitto_sub -h localhost -t "asistivo/#" -v`
-- **Pendiente en `nodo_asistivo`:** responder `ping` → `pong` y publicar `actuadores` (sin `pong`, el dashboard muestra *"el nodo no responde al ping"*).
+- `cmd` también acepta `{"accion":"calibrar_emg"}` (teclas **E** de la interfaz) y `{"accion":"calibrar_imu"}` (tecla **I**: nueva posición neutra de la cabeza). El ESP32 publica con QoS 0 (PubSubClient no publica con QoS 1).
 - `ts` de la interfaz es la hora de la laptop (`Date.now()`), no `millis()`.
 
 ---
@@ -270,7 +271,10 @@ Checklist: [sección 5](CHECKLIST_ARMADO.md#5-actuadores).
 
 > **Con los pasos 1 a 4 terminados, el núcleo IoT está completo.**
 
-### Paso 5: Integración del firmware
+### Paso 5: Integración del firmware ✅ (código; prueba en CHECKLIST, sección 7)
+`firmware/nodo_asistivo/`: `nodo_asistivo.ino` (red, MQTT, actuadores, comandos) + `audio.h`, `emg.h`, `imu.h`, `pulso.h`. Tareas en el núcleo 1: EMG a 1 kHz (prioridad 5) y bus I2C a 100 Hz (prioridad 4); `loop()` publica lo que llega por una cola. Módulos activables en `config.h`. Pulso con algoritmo propio (79 BPM sobre la grabación del 2026-10-28, igual que offline); del de Maxim solo la SpO₂. Gestos de cabeza: neutro de 2 s, 15° con histéresis a 7°, eje dominante.
+
+Plan original:
 - Unir todo en `firmware/nodo_asistivo/`.
 - Usar **FreeRTOS** con dos núcleos: **núcleo 1** para la adquisición de sensores (EMG, IMU, MAX30102) y **núcleo 0** para WiFi, MQTT y A2DP. Pasar los eventos entre tareas con colas (`xQueueSend` / `xQueueReceive`).
 - Evitar `delay()` en el loop de sensores; usar temporización con `millis()` o `vTaskDelayUntil`.
