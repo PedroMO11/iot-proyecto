@@ -1,10 +1,24 @@
-// 02a_a2dp_solo.ino : reproduce las frases por Bluetooth (sin WiFi)
+// 02a_a2dp_solo.ino : reproduce las frases por Bluetooth y prueba el buzzer (sin WiFi)
 #include "BluetoothA2DPSource.h"
 #include "frases.h"
 
-const char* PARLANTE = "ULT WEAR";   // audífonos Sony ULT WEAR (nombre Bluetooth exacto)
+const char* PARLANTE = "Xiaomi Sound Pocket";   // nombre Bluetooth del parlante
+
+const int PIN_BUZZER = 27;              // buzzer activo directo al GPIO
+const uint32_t ALERTA_MS = 2000;
 
 BluetoothA2DPSource a2dp;
+
+// La librería solo acepta nombres que empiecen exactamente igual. Con el Xiaomi
+// funcionó mejor buscar PARLANTE dentro del nombre, sin distinguir mayúsculas.
+bool esParlante(const char* nombre, esp_bd_addr_t direccion, int rssi) {
+  String visto = nombre, buscado = PARLANTE;
+  visto.toLowerCase();
+  buscado.toLowerCase();
+  bool coincide = visto.indexOf(buscado) >= 0;
+  Serial.printf("Visto: \"%s\" (RSSI %d)%s\n", nombre, rssi, coincide ? " <- parlante" : "");
+  return coincide;
+}
 
 // Reproducción: las frases están a 16 kHz y A2DP pide 44,1 kHz estéreo,
 // así que avanzamos 16000/44100 muestras por cada cuadro enviado.
@@ -44,13 +58,26 @@ void reproducir(int id) {               // id de 1 a NUM_FRASES
   Serial.printf("Reproduciendo frase %d\n", id);
 }
 
+bool alertaActiva = false;
+uint32_t inicioAlerta = 0;
+
+void alerta() {                         // el loop apaga el buzzer tras ALERTA_MS, sin bloquear
+  digitalWrite(PIN_BUZZER, HIGH);
+  alertaActiva = true;
+  inicioAlerta = millis();
+  Serial.println("Alerta: buzzer ON");
+}
+
 void setup() {
   Serial.begin(115200);
+  pinMode(PIN_BUZZER, OUTPUT);
+  digitalWrite(PIN_BUZZER, LOW);
   a2dp.set_data_callback_in_frames(get_data_frames);
+  a2dp.set_ssid_callback(esParlante);
   a2dp.set_volume(127);                 // 0 a 127 (máximo)
   a2dp.set_auto_reconnect(true);        // guarda la dirección en la NVS y la usa al arrancar
-  a2dp.start(PARLANTE);
-  Serial.println("Buscando parlante... escribe 1-6 en el Monitor Serie");
+  a2dp.start();                         // sin nombre: decide esParlante
+  Serial.printf("Buscando \"%s\"... escribe 1-6 (frase) o 'a' (buzzer) en el Monitor Serie\n", PARLANTE);
 }
 
 void loop() {
@@ -68,9 +95,15 @@ void loop() {
     Serial.println("Reintentando conexión con el parlante...");
     a2dp.reconnect();
   }
+  if (alertaActiva && millis() - inicioAlerta >= ALERTA_MS) {
+    digitalWrite(PIN_BUZZER, LOW);
+    alertaActiva = false;
+    Serial.println("Alerta: buzzer OFF");
+  }
   if (Serial.available()) {
     char c = Serial.read();
     if (c >= '1' && c <= '9') reproducir(c - '0');
+    if (c == 'a') alerta();
   }
   delay(10);
 }

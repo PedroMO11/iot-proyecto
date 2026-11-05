@@ -37,6 +37,17 @@ const float GANANCIA = 2.5f;            // los WAV llegan con pico ~12000/32767;
 // Cada RECONEXION_MS sin parlante se vuelve a llamar a la última dirección conocida.
 const uint32_t RECONEXION_MS = 10000;
 
+// La librería solo acepta nombres que empiecen exactamente igual. Con el Xiaomi
+// funcionó mejor buscar PARLANTE dentro del nombre, sin distinguir mayúsculas.
+bool esParlante(const char* nombre, esp_bd_addr_t direccion, int rssi) {
+  String visto = nombre, buscado = PARLANTE;
+  visto.toLowerCase();
+  buscado.toLowerCase();
+  bool coincide = visto.indexOf(buscado) >= 0;
+  Serial.printf("Visto: \"%s\" (RSSI %d)%s\n", nombre, rssi, coincide ? " <- parlante" : "");
+  return coincide;
+}
+
 int32_t get_data_frames(Frame* frame, int32_t frame_count) {
   for (int i = 0; i < frame_count; i++) {
     int16_t muestra = 0;
@@ -140,9 +151,10 @@ void setup() {
   mqtt.setKeepAlive(5);                 // el broker publica el LWT tras ~7,5 s sin noticias (por defecto, ~22 s)
 
   a2dp.set_data_callback_in_frames(get_data_frames);
+  a2dp.set_ssid_callback(esParlante);
   a2dp.set_volume(127);                 // 0 a 127 (máximo)
   a2dp.set_auto_reconnect(true);        // guarda la dirección en la NVS y la usa al arrancar
-  a2dp.start(PARLANTE);
+  a2dp.start();                         // sin nombre: decide esParlante
 }
 
 void loop() {
