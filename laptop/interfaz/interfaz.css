@@ -85,3 +85,25 @@ kbd {
   font-family: inherit; font-size: 12px; padding: 1px 6px; border-radius: 5px;
   border: 1px solid #3a4656; background: #1a222d; color: var(--texto);
 }
+
+/* Calibración de la mirada: se atenúa el menú y aparece un punto que se encoge (atrae la mirada) */
+body.calibrando .casilla { opacity: .12; }
+body.calibrando .punto-mirada { display: none; }
+
+/* Cursor de la mirada: dónde está mirando el usuario según la visión */
+.punto-mirada {
+  position: fixed; left: 0; top: 0; width: 46px; height: 46px; margin: -23px 0 0 -23px;
+  border-radius: 50%; pointer-events: none; z-index: 10;
+  background: rgba(74, 163, 255, .28); border: 3px solid #4aa3ff;
+  box-shadow: 0 0 0 4px rgba(16, 21, 28, .55);
+  transition: transform 60ms linear;
+}
+
+/* Punto de calibración, comprobación o recentrado: grande al aparecer y se encoge hasta 12 px */
+.objetivo-mirada {
+  position: fixed; z-index: 12; pointer-events: none; width: 64px; height: 64px; margin: -32px 0 0 -32px;
+  border-radius: 50%; border: 3px solid #4aa3ff; background: radial-gradient(#ffffff 0 5px, #4aa3ff 6px 100%);
+}
+.objetivo-mirada.validacion { border-color: #2ecc71; background: radial-gradient(#ffffff 0 5px, #2ecc71 6px 100%); }
+.objetivo-mirada.activo { animation: encoger var(--duracion, 2.4s) ease-out forwards; }
+@keyframes encoger { 0% { transform: scale(1); } 40% { transform: scale(.32); } 100% { transform: scale(.19); } }

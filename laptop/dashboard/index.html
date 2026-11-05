@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Panel del cuidador</title>
+  <link rel="stylesheet" href="dashboard.css">
+</head>
+<body>
+  <header class="barra">
+    <div class="marca">
+      <span class="cama" id="nombre-nodo">nodo1</span>
+      <span class="titulo">Comunicador asistivo · panel del cuidador</span>
+    </div>
+    <div class="estados">
+      <span id="s-nodo" class="estado"><i></i><b>Nodo</b> sin datos</span>
+      <span id="s-broker" class="estado"><i></i><b>Broker</b> desconectado</span>
+      <span id="s-reloj" class="reloj">--:--:--</span>
+    </div>
+  </header>
+
+  <div id="alerta" class="alarma oculto" role="alert"></div>
+
+  <main class="rejilla">
+    <section class="monitor" aria-label="Signos vitales">
+      <div class="param fc" id="p-bpm">
+        <div class="etq">FC <small>lpm</small></div>
+        <div class="num" id="v-bpm">--</div>
+        <div class="lim" id="l-bpm"></div>
+        <div class="pie-param" id="d-bpm">promedio de 10 s</div>
+      </div>
+      <div class="param spo2" id="p-spo2">
+        <div class="etq">SpO₂ <small>%</small></div>
+        <div class="num" id="v-spo2">--</div>
+        <div class="lim" id="l-spo2"></div>
+        <div class="pie-param" id="d-spo2">promedio de 10 s</div>
+      </div>
+      <div class="traza">
+        <div class="traza-cab"><span class="c-fc">FC</span><span class="c-spo2">SpO₂</span><span>últimos 5 min</span></div>
+        <canvas id="g-vitales"></canvas>
+      </div>
+    </section>
+
+    <aside class="lateral">
+      <section>
+        <h2>Sistema</h2>
+        <dl class="ficha">
+          <dt>Latencia MQTT (ida)</dt><dd id="m-latencia">—</dd>
+          <dt>Disponibilidad del nodo</dt><dd id="m-disp">—</dd>
+          <dt>Desconexiones</dt><dd id="m-caidas">0</dd>
+          <dt>Interfaz</dt><dd id="m-modo">—</dd>
+          <dt>Visión (mirada)</dt><dd id="m-vision">—</dd>
+          <dt>Luz (relé)</dt><dd id="m-luz">—</dd>
+          <dt>EMG (mandíbula)</dt><dd id="m-emg">—</dd>
+          <dt>Cabeza (MPU6050)</dt><dd id="m-cabeza">—</dd>
+          <dt>Sensor de pulso</dt><dd id="m-pulso">—</dd>
+          <dt>Parlante</dt><dd id="m-parlante">—</dd>
+        </dl>
+        <canvas id="g-latencia"></canvas>
+        <p class="leyenda-lat">latencia de ida por ping · línea: meta 300 ms</p>
+      </section>
+
+      <section>
+        <h2>Pruebas de uso</h2>
+        <table class="metas">
+          <thead><tr><th>Indicador</th><th>Valor</th><th>Meta</th><th></th></tr></thead>
+          <tbody>
+            <tr id="r-aciertos"><td>Aciertos <span class="det"></span></td><td class="val">—</td><td>≥ 90 %</td><td class="ok"></td></tr>
+            <tr id="r-tsel"><td>Tiempo de selección <span class="det"></span></td><td class="val">—</td><td>≤ 5 s</td><td class="ok"></td></tr>
+            <tr id="r-accidentales"><td>Activaciones accidentales <span class="det"></span></td><td class="val">—</td><td>≤ 1 / 5 min</td><td class="ok"></td></tr>
+            <tr id="r-enviadas"><td>Frases enviadas · cancelaciones</td><td class="val">0 · 0</td><td></td><td></td></tr>
+          </tbody>
+        </table>
+        <div class="acciones">
+          <button id="b-csv">Exportar CSV</button>
+          <button id="b-reiniciar">Reiniciar métricas</button>
+        </div>
+      </section>
+    </aside>
+
+    <section class="registro">
+      <h2>Registro</h2>
+      <pre id="t-eventos"></pre>
+    </section>
+  </main>
+
+  <footer class="nota">Pulso y SpO₂ referenciales: el MAX30102 no es un dispositivo médico.</footer>
+
+  <script src="../web/config.js"></script>
+  <script src="../web/mqtt-ws.js"></script>
+  <script src="graficos.js"></script>
+  <script src="dashboard.js"></script>
+</body>
+</html>

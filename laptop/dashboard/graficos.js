@@ -18,7 +18,7 @@ function dibujarGrafico(canvas, series, opciones) {
   const x = (t) => m.izq + ((t - t0) / (t1 - t0)) * w;
   const y = (v, r) => m.arr + h - ((v - r[0]) / (r[1] - r[0])) * h;
 
-  ctx.font = "11px Inter, system-ui, sans-serif";
+  ctx.font = "11px 'JetBrainsMono NFM', 'DejaVu Sans Mono', monospace";
   ctx.strokeStyle = linea; ctx.fillStyle = tenue; ctx.lineWidth = 1;
 
   // rejilla y ejes (4 divisiones) con las escalas de la primera serie de cada lado
@@ -61,7 +61,7 @@ function dibujarGrafico(canvas, series, opciones) {
   }
   ctx.restore();
   if (!series.some((s) => s.datos.some((p) => p[0] >= t0 && p[1] !== null))) {
-    ctx.fillStyle = tenue; ctx.textAlign = "center"; ctx.font = "13px Inter, system-ui, sans-serif";
+    ctx.fillStyle = tenue; ctx.textAlign = "center"; ctx.font = "12px 'JetBrainsMono NFM', 'DejaVu Sans Mono', monospace";
     ctx.fillText("sin datos todavía", m.izq + w / 2, m.arr + h / 2);
   }
 }

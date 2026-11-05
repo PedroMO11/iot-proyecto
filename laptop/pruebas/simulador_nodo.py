@@ -4,11 +4,12 @@
 #   a / d / w / s  → imu/evento izq / der / arriba / abajo
 #   c              → emg/evento confirmar        x → cancelar
 #   n              → sin dedo / con dedo         q → salir
-# Uso:  python laptop/pruebas/simulador_nodo.py [--broker localhost]
+# Uso:  uv run laptop/pruebas/simulador_nodo.py [--broker localhost] [--puerto 1883]
 import argparse
 import json
 import math
 import random
+import sys
 import threading
 import time
 
@@ -18,8 +19,11 @@ FRASES = {1: "Tengo hambre", 2: "Hola", 3: "Tengo sed", 4: "Enciende la luz",
           5: "Llamar al cuidador", 6: "Siento dolor"}
 TECLAS_IMU = {"a": "izq", "d": "der", "w": "arriba", "s": "abajo"}
 
+sys.stdout.reconfigure(encoding="utf-8")     # en Windows, con la salida redirigida, cp1252 no tiene ♪ ni «»
+
 p = argparse.ArgumentParser()
 p.add_argument("--broker", default="localhost")
+p.add_argument("--puerto", type=int, default=1883)
 p.add_argument("--nodo", default="asistivo/nodo1")
 args = p.parse_args()
 N = args.nodo
@@ -61,6 +65,9 @@ def al_recibir(c, datos, msg):
             accion = "luz"
         elif n == 5:
             accion = "alerta"
+    if accion in ("calibrar_emg", "calibrar_imu"):
+        print(f"[sim] {accion}: listo")
+        return
     if accion == "luz":
         estado["luz"] = not estado["luz"]
         print(f"[sim] relé → luz {'ENCENDIDA' if estado['luz'] else 'apagada'}")
@@ -73,8 +80,18 @@ c = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, client_id="esp32-nodo1-sim")
 c.will_set(f"{N}/estado", "offline", qos=1, retain=True)
 c.on_connect = al_conectar
 c.on_message = al_recibir
-c.connect(args.broker, 1883, keepalive=5)
+c.connect(args.broker, args.puerto, keepalive=5)
 c.loop_start()
+
+
+def diagnostico():                               # como nodo_asistivo: estado interno cada 5 s
+    while True:
+        c.publish(f"{N}/diag", json.dumps({
+            "emg": {"calibrado": True, "envolvente": random.randint(30, 45), "umbral": 90},
+            "imu": {"presente": True, "pitch": round(random.gauss(0, 1.5), 1), "roll": round(random.gauss(0, 1.5), 1)},
+            "pulso": {"presente": True, "ir": random.randint(100000, 110000) if estado["dedo"] else random.randint(200, 400)},
+            "parlante": True, "rssi": -55, "heap": 180000}))
+        time.sleep(5)
 
 
 def vitales():
@@ -90,6 +107,7 @@ def vitales():
 
 
 threading.Thread(target=vitales, daemon=True).start()
+threading.Thread(target=diagnostico, daemon=True).start()
 print("[sim] a/d/w/s = cabeza · c = confirmar · x = cancelar · n = dedo · q = salir (Enter tras cada tecla)")
 try:
     while True:

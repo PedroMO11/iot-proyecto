@@ -111,15 +111,20 @@ Todo el equipo debe respetar estos topics y formatos, para que cada parte pueda 
 | `asistivo/nodo1/cmd` | Interfaz | ESP32 | 1 | `{"accion":"frase","id":3}`, `{"accion":"luz","estado":"toggle"}` o `{"accion":"alerta"}` |
 | `asistivo/nodo1/estado` | ESP32 (LWT) | Interfaz, dashboard | 1, retenido | `"online"` / `"offline"` |
 | `asistivo/nodo1/ping` → `pong` | Dashboard → ESP32 | Dashboard | 0 | El ESP32 devuelve en `pong` el mismo texto que recibe en `ping` (ya lo hace `02b`). El dashboard mide así la latencia cada 2 s |
-| `asistivo/nodo1/actuadores` | ESP32 | Dashboard | 1, retenido | `{"luz":true}` *(opcional: estado del relé)* |
+| `asistivo/nodo1/actuadores` | ESP32 | Dashboard | 1, retenido | `{"luz":true}` (estado del relé) |
+| `asistivo/nodo1/diag` | ESP32 | Dashboard | 0 | Cada 5 s: `{"emg":{"calibrado","envolvente","umbral"},"imu":{"presente","pitch","roll"},"pulso":{"presente","ir"},"parlante","rssi","heap"}` |
 | `asistivo/vision/mirada` | Visión | Interfaz | 0 | `{"region":4}` (1–6), o `{"region":null}` si no hay cara |
+| `asistivo/vision/punto` | Visión | Interfaz | 0 | `{"x":0.42,"y":0.71}` (0–1, relativos a la zona del menú), ~20 por segundo; `{"x":null}` sin cara |
+| `asistivo/vision/estado` | Visión | Dashboard | 0 | `{"fps":30,"cara":true,"calibrado":true,"region":4}`, cada 2 s |
+| `asistivo/vision/cmd` | Interfaz | Visión | 1 | `{"accion":"calibrar"}` o `{"accion":"centrar"}` |
+| `asistivo/vision/calibracion` | Visión | Interfaz, dashboard | 1 | `{"estado":"mirar","region":3}`, `"listo"`, `"centrar"`, `"centrado"` o `{"estado":"error","faltan":[2]}` |
 | `asistivo/interfaz/estado` | Interfaz | Dashboard | 1, retenido | `{"modo":"uso"}`, con `modo` = `uso`, `prueba` o `reposo` |
 | `asistivo/interfaz/seleccion` | Interfaz | Dashboard | 1 | `{"modo":"prueba","id":3,"frase":"Tengo sed","via":"emg","enviado":true,"objetivo":3,"acierto":true,"t_seleccion_ms":2300,"ts":...}` |
 
 - `ts` = `millis()` del ESP32. Sirve para medir la latencia.
 - El ESP32 registra el Last Will (LWT) `"offline"` al conectarse y publica `"online"` apenas conecta.
 - Para revisar todo el tráfico desde la laptop: `mosquitto_sub -h localhost -t "asistivo/#" -v`
-- **Pendiente en `nodo_asistivo`:** responder `ping` → `pong` y publicar `actuadores` (sin `pong`, el dashboard muestra *"el nodo no responde al ping"*).
+- `cmd` también acepta `{"accion":"calibrar_emg"}` (teclas **E** de la interfaz) y `{"accion":"calibrar_imu"}` (tecla **I**: nueva posición neutra de la cabeza). El ESP32 publica con QoS 0 (PubSubClient no publica con QoS 1).
 - `ts` de la interfaz es la hora de la laptop (`Date.now()`), no `millis()`.
 
 ---
@@ -131,7 +136,10 @@ Todo el equipo debe respetar estos topics y formatos, para que cada parte pueda 
 ├── README.md                  ← este documento
 ├── CHECKLIST_ARMADO.md        ← pruebas paso a paso con casillas y registro de resultados
 ├── COMPRAS.md                 ← lo que falta comprar (transistores, carga del relé, cables)
-├── .gitignore                 ← excluye config.h, .venv, __pycache__ y .pio
+├── .gitignore                 ← excluye config.h, .venv, __pycache__, .pio, el modelo y la calibración de la visión
+├── pyproject.toml             ← dependencias de Python (uv)
+├── uv.lock                    ← versiones exactas (sí se sube)
+├── .python-version           ← Python 3.12 para uv
 ├── firmware/                  ← código del ESP32 (Arduino IDE o PlatformIO)
 │   ├── pruebas/               ← sketches pequeños, uno por paso (ver sección 7 y CHECKLIST_ARMADO.md)
 │   │   ├── 01_mqtt_basico/
@@ -148,17 +156,18 @@ Todo el equipo debe respetar estos topics y formatos, para que cada parte pueda 
 │       ├── nodo_asistivo.ino
 │       ├── config.example.h   ← plantilla (sí se sube)
 │       └── config.h           ← WiFi, IP del broker (NO se sube, está en .gitignore)
-├── audios/                    ← las 6 frases (.m4a, .wav y frases.h generado)
+├── audios/                    ← las 6 frases (.mp3 originales, .wav y frases.h generado)
 ├── herramientas/
 │   └── wav_a_header.py        ← convierte los .wav en frases.h
 ├── laptop/
 │   ├── mosquitto.conf
-│   ├── requirements.txt
 │   ├── pruebas/               ← latencia_mqtt.py, simulador_nodo.py (ESP32 simulado)
-│   ├── web/                   ← cliente MQTT por WebSocket y configuración (compartidos)
-│   ├── vision/                ← MediaPipe: mirada → región 1..6
-│   └── interfaz/              ← menú 2×3 del paciente (página web)
-├── dashboard/                 ← panel del cuidador: signos vitales y métricas (página web)
+│   ├── web/                   ← cliente MQTT por WebSocket y configuración (compartidos por interfaz y dashboard)
+│   ├── vision/                ← mirada.py: MediaPipe, punto de la mirada y casilla 1..6
+│   │   ├── face_landmarker.task ← modelo (se descarga solo, NO se sube)
+│   │   └── calibracion.json   ← calibración de la mirada (NO se sube)
+│   ├── interfaz/              ← menú 2×3 del paciente (página web)
+│   └── dashboard/             ← panel del cuidador: signos vitales y métricas (página web)
 └── docs/                      ← informe, diagramas, fotos de pruebas
 ```
 
@@ -184,12 +193,13 @@ Todo el equipo debe respetar estos topics y formatos, para que cada parte pueda 
    ```
    mosquitto -c laptop/mosquitto.conf -v
    ```
+   En Windows, el instalador deja Mosquitto como **servicio** en el 1883 y **sin** el 9001, así que la interfaz y el dashboard no conectan. Detenerlo antes (PowerShell como administrador: `net stop mosquitto`, o `Set-Service mosquitto -StartupType Manual` para que no vuelva a arrancar) y usar la configuración del repositorio.
    En Windows, permitir Mosquitto en el firewall (red privada) si el ESP32 no logra conectarse. En Linux con firewalld: `sudo firewall-cmd --zone=public --add-port=1883/tcp`.
-2. Python 3.10 o superior (en Linux, activar el entorno con `source .venv/bin/activate` o usar `.venv/bin/python`):
+2. **uv** para Python (https://docs.astral.sh/uv/): `winget install astral-sh.uv` (Windows), `brew install uv` (Mac) o `curl -LsSf https://astral.sh/uv/install.sh | sh` (Linux). Desde la raíz del repositorio:
    ```
-   python -m venv .venv
-   pip install -r laptop/requirements.txt
+   uv sync
    ```
+   Crea `.venv` con Python 3.12 (fijado en `.python-version`; uv lo descarga si no está instalado) y las versiones exactas de `uv.lock`. Los scripts se corren con `uv run <script>`, sin activar el entorno. Para agregar una librería: `uv add <paquete>` y subir `pyproject.toml` y `uv.lock`. mediapipe 1.2.0 no tiene versión para Mac con procesador Intel.
 3. **ffmpeg**, para convertir los audios: `winget install ffmpeg` (Windows) o `brew install ffmpeg` (Mac).
 
 ### Red
@@ -261,18 +271,28 @@ Checklist: [sección 5](CHECKLIST_ARMADO.md#5-actuadores).
 
 > **Con los pasos 1 a 4 terminados, el núcleo IoT está completo.**
 
-### Paso 5: Integración del firmware
+### Paso 5: Integración del firmware ✅ (código; prueba en CHECKLIST, sección 7)
+`firmware/nodo_asistivo/`: `nodo_asistivo.ino` (red, MQTT, actuadores, comandos) + `audio.h`, `emg.h`, `imu.h`, `pulso.h`. Tareas en el núcleo 1: EMG a 1 kHz (prioridad 5) y bus I2C a 100 Hz (prioridad 4); `loop()` publica lo que llega por una cola. Módulos activables en `config.h`. Pulso con algoritmo propio (79 BPM sobre la grabación del 2026-10-28, igual que offline); del de Maxim solo la SpO₂. Gestos de cabeza: neutro de 2 s, 15° con histéresis a 7°, eje dominante.
+
+Plan original:
 - Unir todo en `firmware/nodo_asistivo/`.
 - Usar **FreeRTOS** con dos núcleos: **núcleo 1** para la adquisición de sensores (EMG, IMU, MAX30102) y **núcleo 0** para WiFi, MQTT y A2DP. Pasar los eventos entre tareas con colas (`xQueueSend` / `xQueueReceive`).
 - Evitar `delay()` en el loop de sensores; usar temporización con `millis()` o `vTaskDelayUntil`.
 
 ### Paso 6: Laptop (en paralelo, no necesita hardware)
-- **`laptop/vision/`:** MediaPipe Face Mesh con `refine_landmarks=True` (478 landmarks), posición del iris respecto a las comisuras del ojo, y asignación a una de las 6 regiones (2 × 3). Agregar un suavizado para que el cursor no tiemble.
+- **`laptop/vision/`** ✅: `mirada.py` (cámara, MQTT y ventana de diagnóstico) + `modelo.py` (rasgos y modelo) + `evaluar_calibracion.py` (análisis para el informe). Webcam a **1280×720 y 30 fps** + **MediaPipe Face Landmarker** (`mp.solutions`/Face Mesh ya no existe en mediapipe 1.x).
+  - **Rasgos (20):** iris de cada ojo respecto de sus comisuras, en píxeles reales y corregido por el alabeo de la cabeza; apertura de los párpados; 8 *blendshapes* de mirada; **pose 3D de la cabeza** (giro, cabeceo, alabeo y posición en cm, de la matriz de transformación de MediaPipe).
+  - **Calibración** (tecla **C**): 10 puntos (rejilla de 3 × 3 con el **centro y los bordes**, y el centro repetido al final para medir la deriva). El programa prueba 48 variantes (conjuntos de rasgos, 1.er/2.º orden y regularización) y elige la de menor error con **validación cruzada dejando fuera un punto entero**, es decir, acertando en lugares no calibrados.
+  - **Comprobación** (automática tras calibrar, o tecla **K**): 6 puntos en los centros de casilla; informa el **% de casillas acertadas** y el error (en la interfaz, el dashboard y `calibracion.json`). Primera prueba con buena luz (2026-10-30): **100 % de casillas, error de 3,5 % (x) y 4,0 % (y)**.
+  - **Recentrado** (tecla **O**): mirar 1 s el centro corrige el desvío si la persona se movió.
+  - **En uso:** filtro **One Euro** (poco temblor en reposo, poca demora al moverse) e **histéresis** en los bordes (para cambiar de casilla hay que entrar un 4 % en ella y quedarse 0,25 s). Se descartan parpadeos y caras de lado (> 35°).
+  - **Cámara (Linux):** al arrancar pone el antiparpadeo en **60 Hz** (venía en 50 Hz, y con la red de Perú salen bandas) y fija los 30 fps (con poca luz caía a 10). Con poca luz la ventana muestra "POCA LUZ" y no se detecta la cara: iluminar la cara de frente.
+  - `calibracion.json` (personal) y el modelo `face_landmarker.task` (3,7 MB, se descarga solo) no se suben.
 - **`laptop/interfaz/`** ✅: menú 2 × 3 a pantalla completa (página web). El cursor se mueve con `imu/evento` (una casilla), con `vision/mirada` (región directa) o con el teclado; `emg/evento` confirma o cancela; al confirmar publica en `cmd` y en `interfaz/seleccion`. Tras confirmar ignora confirmaciones durante 1,5 s. Tres modos (tecla **M**):
   - **uso:** normal;
   - **prueba:** marca un objetivo al azar y registra acierto o error y el tiempo de selección;
   - **reposo:** no envía frases; cada confirmación del EMG cuenta como activación accidental.
-- **`dashboard/`** ✅: suscrito a `asistivo/#`. No solo muestra: calcula las métricas con meta, en verde o rojo:
+- **`laptop/dashboard/`** ✅: suscrito a `asistivo/#`. No solo muestra: calcula las métricas con meta, en verde o rojo:
   - pulso y SpO₂ (promedio de 10 s) con alerta fuera de rango (50–120 BPM, SpO₂ < 92 %; referencial),
   - tasa de aciertos en modo prueba (meta ≥ 90 %),
   - tiempo de selección, mediana (meta ≤ 5 s),
@@ -284,9 +304,10 @@ Checklist: [sección 5](CHECKLIST_ARMADO.md#5-actuadores).
 
 **Cómo correrlo:**
 1. `mosquitto -c laptop/mosquitto.conf -v`
-2. Abrir en el navegador `laptop/interfaz/index.html` (tecla **F**: pantalla completa) y `dashboard/index.html`. Funcionan sin internet: no usan librerías externas.
-3. **Sin el ESP32:** `.venv/bin/python laptop/pruebas/simulador_nodo.py` publica vitales, responde ping y ejecuta los comandos. Por teclado: `a/d/w/s` = cabeza, `c` = confirmar, `x` = cancelar, `n` = sin dedo (Enter tras cada tecla).
-4. **Dashboard desde otro equipo o un celular** en la misma red: en la laptop, `python -m http.server 8000` desde la raíz del repo, y abrir `http://<IP-de-la-laptop>:8000/dashboard/?broker=ws://<IP-de-la-laptop>:9001` (abrir también los puertos 8000 y 9001 en el firewall).
+2. Abrir en el navegador `laptop/interfaz/index.html` (tecla **F**: pantalla completa) y `laptop/dashboard/index.html`. Funcionan sin internet: no usan librerías externas.
+3. **Mirada:** `uv run laptop/vision/mirada.py` (abre una ventana de diagnóstico con la cámara, los ojos ampliados y un minimapa; `--sin-ventana` para ocultarla; con el broker en otra laptop, `--broker <IP>`). En la interfaz: **C** calibra, **K** comprueba la precisión, **O** recentra, **V** activa o desactiva la mirada. Para el informe: `uv run laptop/vision/evaluar_calibracion.py figura.png`.
+4. **Sin el ESP32:** `uv run laptop/pruebas/simulador_nodo.py` publica vitales, responde ping y ejecuta los comandos. Por teclado: `a/d/w/s` = cabeza, `c` = confirmar, `x` = cancelar, `n` = sin dedo (Enter tras cada tecla).
+5. **Dashboard desde otro equipo o un celular** en la misma red: en la laptop, `uv run python -m http.server 8000` desde la raíz del repo, y abrir `http://<IP-de-la-laptop>:8000/laptop/dashboard/?broker=ws://<IP-de-la-laptop>:9001` (abrir también los puertos 8000 y 9001 en el firewall).
 
 ### Paso 7: Enclosure y montaje
 Carcasa del nodo (impresa en 3D o reciclada), vincha para el MPU6050 y el electrodo EMG, y soporte para el MAX30102 en el dedo.

@@ -17,6 +17,7 @@ El código de cada prueba está en [firmware/pruebas/](firmware/pruebas/) y en [
 4. [Sensores](#4-sensores)
 5. [Actuadores](#5-actuadores)
 6. [Registro de resultados](#6-registro-de-resultados)
+7. [Prueba de conjunto: el sistema completo](#7-prueba-de-conjunto-el-sistema-completo)
 
 ---
 
@@ -33,7 +34,7 @@ Instrucciones en el [README, sección 6](README.md#6-preparar-el-entorno).
 - [ ] Arduino IDE 2 con el paquete de placas **esp32** y la placa **ESP32 Dev Module**.
 - [ ] **Partition Scheme: "Huge APP (3MB No OTA)"**.
 - [ ] Librerías instaladas: `ESP32-A2DP` (ZIP), `PubSubClient`, `ArduinoJson` 7, `SparkFun MAX3010x` (`Adafruit MPU6050` ya no hace falta: ver 4.1).
-- [ ] Python 3 con `pip install -r laptop/requirements.txt`.
+- [ ] **uv** instalado y `uv sync` corrido en la raíz del repositorio.
 - [ ] **ffmpeg** instalado.
 - [ ] Mosquitto instalado (se necesita a partir de la prueba B).
 
@@ -101,7 +102,7 @@ Las frases se guardan en la flash del ESP32 como **arreglos de C**, sin sistema 
 
 - [ ] Desde la carpeta `audios/` ejecutar:
   ```bash
-  python ../herramientas/wav_a_header.py frases.h frase1.wav frase2.wav frase3.wav frase4.wav frase5.wav frase6.wav
+  uv run ../herramientas/wav_a_header.py frases.h frase1.wav frase2.wav frase3.wav frase4.wav frase5.wav frase6.wav
   ```
 - [ ] ✅ Imprime algo como `frases.h: 6 frases, 380 KB en la flash`. Si dice que el formato está mal, repetir el paso 1.3.
 - [ ] Copiar `frases.h` a `firmware/pruebas/02a_a2dp_solo/` y `firmware/pruebas/02b_coexistencia/`, reemplazando el provisional (que solo tiene silencio).
@@ -156,7 +157,7 @@ Sketch: [firmware/pruebas/02a_a2dp_solo/](firmware/pruebas/02a_a2dp_solo/02a_a2d
 - [x] El Monitor Serie muestra **WiFi OK**, **MQTT OK** y **Parlante CONECTADO**.
 - [x] En otra terminal: `mosquitto_sub -t "asistivo/#" -v` muestra `asistivo/nodo1/estado online`.
 - [x] Frase por MQTT: `mosquitto_pub -t asistivo/nodo1/cmd -q 1 -m "{\"accion\":\"frase\",\"id\":1}"` → suena "Tengo hambre". En Mac/Linux se pueden usar comillas simples: `-m '{"accion":"frase","id":1}'`.
-- [x] **Latencia sin audio:** correr `python laptop/pruebas/latencia_mqtt.py` sin reproducir nada. Anotar el promedio y el máximo en la sección 6.
+- [x] **Latencia sin audio:** correr `uv run laptop/pruebas/latencia_mqtt.py` sin reproducir nada. Anotar el promedio y el máximo en la sección 6.
 - [x] **Latencia con audio:** correr el script otra vez mientras se mandan frases seguidas (escribir 1, 2, 3… en el Monitor Serie). Anotar en la sección 6.
 - [ ] Durante el audio: ¿se corta la voz? ¿se cae el MQTT? ¿se reinicia el ESP32? Anotarlo.
 - [x] Desconectar el ESP32 → en `mosquitto_sub` aparece `offline` en pocos segundos. *(Con keepalive de 5 s: 3,6 s y 6 s en dos pruebas; el máximo teórico es ~7,5 s. Al reconectar el USB publica `online` en ~2 s y recupera los audífonos en ~20 s sin modo emparejamiento.)*
@@ -291,7 +292,7 @@ La calibración se repite **cada vez que arranca el ESP32**: no queda guardada. 
 Sketch: [firmware/pruebas/04a_rele/](firmware/pruebas/04a_rele/04a_rele.ino). Alterna el GPIO26 entre HIGH y LOW cada 2 s y lo imprime en el Monitor Serie.
 
 - [x] **Sin carga** (solo el módulo): se escucha el "clic" y el LED del módulo cambia cada 2 s. *(Solo con VCC del módulo en **3V3**: ver abajo.)*
-- [x] Anotar si el relé se activa con **HIGH** o con **LOW**. Muchos módulos se activan con LOW; en ese caso, en el código final "encender" es `LOW`. *(**LOW**: con HIGH 1 s / LOW 4 s el LED verde quedó 4 s encendido. Coincide con `RELE_ENCENDIDO LOW` de `config.example.h`.)*
+- [x] Anotar si el relé se activa con **HIGH** o con **LOW**. Muchos módulos se activan con LOW; en ese caso, en el código final "encender" es `LOW`. *(**LOW**: con HIGH 1 s / LOW 4 s el LED verde quedó 4 s encendido. Sin transistor, `RELE_ENCENDIDO` va en `LOW`; con el 2N2222 del cableado final (sección 7.0), en `HIGH`.)*
 - [x] Si el relé **nunca se apaga**, es un problema conocido de módulos de 5 V con lógica de 3,3 V. Soluciones: un módulo con jumper **JD-VCC**, o manejar IN con un transistor 2N2222 (conexión como en la nota de la sección 5.2). *(Nos pasó el 2026-10-28: módulo JQC3F-05VDC-C de 3 pines IN/GND/VCC, sin jumpers; con VCC a 5 V el LED verde quedaba fijo. **Provisional:** VCC del módulo a **3V3** → conmuta. La bobina es de 5 V y a 3,3 V queda justa: la solución final es un **2N2222** que lleve IN a GND, con el módulo de nuevo a 5 V; en el código, la lógica se invierte.)*
 - [ ] Recién entonces conectar el **foco de 12 V** y la fuente. Nunca usar 220 V en este proyecto.
 - [ ] ✅ El foco prende y apaga cada 2 s.
@@ -342,3 +343,73 @@ Completar a medida que se prueba. Sirve como evidencia para el informe final.
 | Relé: lógica (HIGH o LOW = encendido) | 2026-10-28 | ✅ LOW | JQC3F-05VDC-C; conmuta solo con VCC del módulo a 3V3 (provisional, falta transistor). Sin carga de 12 V todavía |
 | Buzzer | 2026-10-28 | ✅ | Activo, directo a D27 sin transistor (suena bien a 3,3 V). `04b_buzzer`: 3 pitidos cada 3 s |
 | Buzzer por MQTT (`alerta`) | 2026-10-28 | ✅ | `mosquitto_pub` → broker → ESP32 → buzzer 2 s, 2 de 2. La frase 5 también lo activa. Falta probarlo con una frase sonando |
+
+---
+
+## 7. Prueba de conjunto: el sistema completo
+
+Firmware: [firmware/nodo_asistivo/](firmware/nodo_asistivo/nodo_asistivo.ino). Une todo lo aprobado en las secciones 1–5. **Se prueba por etapas:** si algo falla, se desactiva ese módulo en `config.h` (`USAR_AUDIO`, `USAR_EMG`, `USAR_IMU`, `USAR_PULSO` en 0) y se sigue con el resto.
+
+### 7.0 Cableado final (USB desconectado)
+
+| Componente | Conexión |
+|---|---|
+| Rieles | **3V3** → EMG, MPU6050, MAX30102 · **VIN (5 V)** → relé · **los dos − unidos al GND** (nunca unir los +) |
+| EMG SEN0240 | rojo 3V3 · negro GND · azul **D34** |
+| MPU6050 y MAX30102 | VCC/VIN 3V3 · GND · SDA **D21** · SCL **D22** (bus compartido; cable largo hasta la vincha y el dedo) |
+| Relé | VCC **5 V** · GND · IN → **colector de Q1** |
+| Q1 (2N2222) | **D26 → 1 kΩ → base** · emisor GND · colector → IN del relé. Ahora el relé se enciende con **HIGH** |
+| Buzzer | + (pata larga) → **D27** · − → GND. Directo, sin transistor (sección 5.2) |
+| Carga del relé | cable + de la lámpara USB cortado: un extremo a **COM**, el otro a **NO** |
+
+Patas del 2N2222 (cara plana hacia uno): **E – B – C**. Si con D26 en LOW el relé no se apaga, poner **10 kΩ entre IN y 5 V**.
+
+### 7.1 Preparación
+- [ ] Hotspot del celular; la laptop conectada a él. IP de la laptop: `ip -4 addr` (Linux) o `ipconfig`.
+- [ ] Firewall: puerto **1883** abierto (sección 3).
+- [ ] `firmware/nodo_asistivo/config.h` copiado de `config.example.h`: WiFi, `MQTT_HOST` = IP de la laptop, `PARLANTE` = parte del nombre (`"xiaomi"`), `RELE_ENCENDIDO HIGH`.
+- [ ] Cargar `nodo_asistivo` con **Partition Scheme: Huge APP**. En Linux: **`herramientas/cargar_nodo.sh`** pone sola la IP actual de la laptop en `MQTT_HOST`, compila y carga (avisa si la red o el firewall no cuadran).
+- [ ] Laptop: **`laptop/iniciar.sh`** arranca el broker y abre la interfaz y el dashboard (`--vision` suma la mirada; `--simulador`, el ESP32 simulado). A mano: `mosquitto -c laptop/mosquitto.conf -v` y abrir `laptop/interfaz/index.html` y `laptop/dashboard/index.html`.
+
+### 7.2 Etapa 1: nodo y red
+- [ ] Monitor Serie: `[wifi] conectado`, `[mqtt] conectado`, `[imu] MPU6050 encontrado`, `[pulso] MAX30102 encontrado`, `[emg] listo: μ=… umbral=…` (mandíbula relajada los primeros 6 s).
+- [ ] Dashboard: **Nodo en línea**; la ficha muestra EMG, cabeza, sensor de pulso y parlante (llegan cada 5 s por `nodo1/diag`); hay latencia (ping/pong).
+- [ ] Desconectar el USB → el dashboard marca **DESCONECTADO** en ≤ 8 s (LWT). Reconectar → vuelve solo.
+
+### 7.3 Etapa 2: actuadores por MQTT (desde la interfaz, con el teclado)
+- [ ] Flechas + **Enter** en cada casilla: suena la frase 1–6 en el parlante.
+- [ ] Casilla **4** («Enciende la luz»): la lámpara se enciende; otra vez, se apaga. El dashboard muestra **Luz encendida/apagada**.
+- [ ] Casilla **5** («Llamar al cuidador»): el buzzer pita 2 s.
+
+### 7.4 Etapa 3: sensores al dashboard
+- [ ] **Pulso:** dedo en el MAX30102 (fijo con liga) → en ~10 s aparecen FC y SpO₂. Comparar con un reloj u oxímetro: anotar en la sección 6.
+- [ ] **Cabeza:** con la vincha puesta, la fila «Cabeza» cambia al inclinar (adelante = primer número +, izquierda = segundo −). Si sale al revés o cruzado: `IMU_SIGNO_*` o `IMU_INTERCAMBIAR` en `config.h`. Tecla **I** de la interfaz: nueva posición neutra.
+- [ ] **EMG:** la fila «EMG» sube por encima del umbral al apretar la mandíbula y vuelve abajo al relajar. Si el reposo está cerca del umbral: tecla **E** (recalibrar) con la mandíbula relajada.
+
+### 7.5 Etapa 4: entradas del paciente en la interfaz
+- [ ] Inclinar la cabeza: el cursor se mueve **una** casilla por gesto (sin pasos dobles).
+- [ ] Apretón corto de mandíbula: **confirma** (suena la frase). Apretón largo (> 1 s): **cancela**.
+- [ ] Hablar, tragar y mover la cabeza: no confirma (o casi nunca).
+- [ ] *(Opcional)* Mirada: `uv run laptop/vision/mirada.py`, calibrar con **C**, comprobar con **K**.
+
+### 7.6 Etapa 5: escenarios completos (la demo)
+- [ ] «Enciende la luz»: llegar a la casilla 4 con la cabeza (o la mirada) y apretar la mandíbula → frase + lámpara.
+- [ ] «Llamar al cuidador»: casilla 5 → frase + buzzer + aparece en el registro del dashboard.
+- [ ] Cancelar: elegir una casilla y mantener el apretón > 1 s → no se envía nada.
+- [ ] Alarma de signos vitales: `mosquitto_pub -t asistivo/nodo1/vitales -m '{"bpm":135,"spo2":89}'` varias veces → el dashboard muestra la alarma.
+- [ ] Apagar y prender el parlante, y desconectar el WiFi un momento: el sistema se recupera solo.
+
+### 7.7 Etapa 6: mediciones para el informe
+- [ ] **Modo prueba** (tecla **M**): 20 selecciones con cabeza + mandíbula → tasa de aciertos (meta ≥ 90 %) y tiempo de selección (meta ≤ 5 s).
+- [ ] **Modo reposo**: 5 min sentado, hablando normal → activaciones accidentales (meta ≤ 1 / 5 min).
+- [ ] **Estabilidad**: 10 min con todo encendido → sin reinicios ni desconexiones; latencia (meta < 300 ms).
+- [ ] **Exportar CSV** en el dashboard y guardarlo en `docs/resultados/`.
+
+| Prueba de conjunto | Fecha | Resultado | Notas |
+|---|---|---|---|
+| Etapa 1: nodo, red y LWT | | | |
+| Etapa 2: frases, luz, buzzer por MQTT | | | |
+| Etapa 3: pulso / cabeza / EMG en el dashboard | | | |
+| Etapa 4: cabeza mueve el cursor, mandíbula confirma | | | |
+| Etapa 5: escenarios de la demo | | | |
+| Etapa 6: aciertos · tiempo · accidentales · latencia | | | |
