@@ -2,6 +2,7 @@
 // Señal → filtro de 60/120/180 Hz (opción B) → rectificación → envolvente de 50 ms.
 // Calibración: 1 s para asentarse + 5 s en reposo → umbral = max(μ + EMG_SIGMAS·σ, μ + EMG_MARGEN).
 // Confirmar = sobre el umbral entre 100 ms y 1 s; cancelar = más de 1 s; refractario de 700 ms.
+// Histéresis: la contracción empieza al pasar el umbral y termina al bajar de μ + HISTERESIS·(umbral − μ).
 #pragma once
 
 namespace emg {
@@ -10,8 +11,10 @@ const int PIN = 34;                     // ADC1 (el ADC2 no funciona con WiFi)
 const int VENTANA = 50;                 // 50 ms a 1 kHz
 const uint32_t ASENTAR_MS = 1000, CALIBRACION_MS = 5000;
 const uint32_t MIN_MS = 100, CANCELAR_MS = 1000, REFRACTARIO_MS = 700;
+const float HISTERESIS = 0.5f;          // con un solo umbral, en el salón (2026-10-28) los apretones largos
+                                        // oscilaban alrededor del umbral y daban CONFIRMAR, no CANCELAR
 
-volatile float envolvente = 0, mu = 0, sigma = 0, umbral = 1e9;
+volatile float envolvente = 0, mu = 0, sigma = 0, umbral = 1e9, umbralBajo = 1e9;
 volatile bool calibrado = false, pedirCalibracion = true;
 
 struct Notch {                          // biquad (RBJ Audio EQ Cookbook) a 1 kHz
@@ -39,7 +42,7 @@ void tarea(void*) {
   // calibración y detección
   uint32_t tCal = 0;
   double s = 0, s2 = 0;
-  uint32_t n = 0;
+  uint32_t n = 0, saturadas = 0;        // saturadas: muestras en los extremos del ADC (señal recortada)
   bool encima = false, cancelado = false;
   uint32_t tInicio = 0, tUltimo = 0;
   TickType_t t = xTaskGetTickCount();
@@ -65,26 +68,35 @@ void tarea(void*) {
     if (pedirCalibracion) {             // empezar (o repetir) la calibración
       pedirCalibracion = false;
       calibrado = false;
-      tCal = ahora; s = s2 = 0; n = 0; encima = false;
+      tCal = ahora; s = s2 = 0; n = 0; saturadas = 0; encima = false;
       Serial.println("[emg] calibrando: mandíbula RELAJADA 6 s");
     }
     if (!calibrado) {
-      if (ahora - tCal > ASENTAR_MS) { s += env; s2 += (double)env * env; n++; }
+      if (ahora - tCal > ASENTAR_MS) {
+        s += env; s2 += (double)env * env; n++;
+#if EMG_OPCION == EMG_DFROBOT
+        if (x <= 5 || x >= 4090) saturadas++;
+#endif
+      }
       if (ahora - tCal > ASENTAR_MS + CALIBRACION_MS && n > 0) {
         mu = s / n;
         sigma = sqrt(max(0.0, s2 / n - (double)mu * mu));
         umbral = max(mu + EMG_SIGMAS * sigma, mu + EMG_MARGEN);
+        umbralBajo = mu + HISTERESIS * (umbral - mu);
         calibrado = true;
-        Serial.printf("[emg] listo: μ=%.1f σ=%.1f umbral=%.1f\n", (float)mu, (float)sigma, (float)umbral);
+        float pctSat = 100.0f * saturadas / n;
+        Serial.printf("[emg] listo: μ=%.1f σ=%.1f umbral=%.1f (termina bajo %.1f) saturadas=%.1f %%\n",
+                      (float)mu, (float)sigma, (float)umbral, (float)umbralBajo, pctSat);
+        if (pctSat > 1) Serial.println("[emg] AVISO: la señal toca los extremos del ADC. Revisar el electrodo y el cable de 3,5 mm; si sigue, es ruido de la red");
       }
       continue;
     }
 
-    bool activo = env > umbral;
-    if (activo && !encima && ahora - tUltimo >= REFRACTARIO_MS) {
+    if (!encima && env > umbral && ahora - tUltimo >= REFRACTARIO_MS) {
       encima = true; tInicio = ahora; cancelado = false;
     }
     if (encima) {
+      bool activo = env > umbralBajo;
       uint32_t dur = ahora - tInicio;
       if (activo && !cancelado && dur > CANCELAR_MS) {
         cancelado = true;

@@ -44,4 +44,4 @@
 // ---- Actuadores (CHECKLIST_ARMADO.md, sección 5) ----
 // Con el transistor 2N2222 entre D26 e IN, el relé se enciende con HIGH. Sin transistor: LOW.
 #define RELE_ENCENDIDO     HIGH
-#define BUZZER_ENCENDIDO   HIGH             // buzzer con transistor en D27
+#define BUZZER_ENCENDIDO   HIGH             // buzzer activo directo a D27, sin transistor (suena bien a 3,3 V)
