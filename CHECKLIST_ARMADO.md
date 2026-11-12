@@ -195,7 +195,7 @@ Sketch: [firmware/pruebas/03_escaner_i2c/](firmware/pruebas/03_escaner_i2c/03_es
 
 - [x] En el Serial Plotter: con el sensor quieto, las curvas están planas (sin deriva). *(Ruido ±0,05°; en reposo marca ~10° / −14° por el desvío del clon → el firmware debe calibrar la posición neutra al arrancar.)*
 - [x] Inclinar **adelante y atrás** mueve una curva; **izquierda y derecha** mueve la otra. Anotar cuál es cuál, porque depende de cómo quede montado en la vincha. *(Sensor plano: **adelante = pitch +**, **izquierda = roll −**. Marcar la orientación en el módulo.)*
-- [ ] Montar el sensor en la vincha y medir cuántos grados se inclina la cabeza **cómodamente** (meta: unos 15°, no 45°).
+- [ ] Montar el sensor en la vincha y medir cuántos grados se inclina la cabeza **cómodamente** (meta: unos 15°, no 45°). *(En la frente, vertical y con los pines hacia abajo: `IMU_FRENTE 1`, y el neutro debe dar cerca de 0°. Con `IMU_FRENTE 0` daba pitch −84,8° y gestos falsos al teclear. Si el chip mira hacia la frente: `IMU_SIGNO_PITCH -1` e `IMU_SIGNO_ROLL -1`.)*
 - [ ] *(Siguiente)* Agregar umbrales con histéresis para generar **un** evento por inclinación (`izq`, `der`, `arriba`, `abajo`).
 
 ### 4.2 MAX30102: pulso y SpO₂
@@ -274,7 +274,7 @@ La calibración se repite **cada vez que arranca el ESP32**: no queda guardada. 
 
 ## 5. Actuadores
 
-### 5.1 Relé de 1 canal optoacoplado → foco LED 12 V
+### 5.1 Relé optoacoplado → foco LED 12 V
 
 **Conexión del lado de control:**
 
@@ -294,6 +294,10 @@ Sketch: [firmware/pruebas/04a_rele/](firmware/pruebas/04a_rele/04a_rele.ino). Al
 - [x] **Sin carga** (solo el módulo): se escucha el "clic" y el LED del módulo cambia cada 2 s. *(Solo con VCC del módulo en **3V3**: ver abajo.)*
 - [x] Anotar si el relé se activa con **HIGH** o con **LOW**. Muchos módulos se activan con LOW; en ese caso, en el código final "encender" es `LOW`. *(**LOW**: con HIGH 1 s / LOW 4 s el LED verde quedó 4 s encendido. Sin transistor, `RELE_ENCENDIDO` va en `LOW`; con el 2N2222 del cableado final (sección 7.0), en `HIGH`.)*
 - [x] Si el relé **nunca se apaga**, es un problema conocido de módulos de 5 V con lógica de 3,3 V. Soluciones: un módulo con jumper **JD-VCC**, o manejar IN con un transistor 2N2222 (conexión como en la nota de la sección 5.2). *(Nos pasó el 2026-10-28: módulo JQC3F-05VDC-C de 3 pines IN/GND/VCC, sin jumpers; con VCC a 5 V el LED verde quedaba fijo. **Provisional:** VCC del módulo a **3V3** → conmuta. La bobina es de 5 V y a 3,3 V queda justa: la solución final es un **2N2222** que lleve IN a GND, con el módulo de nuevo a 5 V; en el código, la lógica se invierte.)*
+
+> **Actualización (2026-11-08): se reemplazó el JQC3F de 1 canal por un módulo de 2 canales.** Quedó con VCC a **5 V** e IN **directo a D26**, sin transistor, y se enciende con **LOW** (`RELE_ENCENDIDO LOW`). El 2N2222, la lógica HIGH y el VCC a 3V3 de las notas anteriores ya no aplican.
+
+- [ ] Medir el voltaje de IN con D26 desconectado. Si supera 3,3 V, ese pin queda expuesto: usar el jumper **JD-VCC** si el módulo lo trae (VCC a 3V3, JD-VCC a 5 V).
 - [ ] Recién entonces conectar el **foco de 12 V** y la fuente. Nunca usar 220 V en este proyecto.
 - [ ] ✅ El foco prende y apaga cada 2 s.
 
@@ -315,7 +319,7 @@ Sketch: [firmware/pruebas/04b_buzzer/](firmware/pruebas/04b_buzzer/04b_buzzer.in
 ### 5.3 Actuadores por MQTT
 - [x] Agregar al sketch de coexistencia (paso 3) las acciones `{"accion":"luz","estado":"toggle"}` → relé y `{"accion":"alerta"}` → buzzer por 2 s. *(Hecho en `02b_coexistencia`: además, la frase 4 conmuta la luz y la frase 5 activa el buzzer. Por el Monitor Serie: `a` = alerta, `l` = luz.)*
 - [x] `{"accion":"alerta"}` con `mosquitto_pub` → el buzzer suena 2 s. *(2026-10-28, 2 de 2. `{"accion":"frase","id":5}` también lo activa.)*
-- [ ] `{"accion":"luz","estado":"toggle"}` con `mosquitto_pub` → el relé conmuta.
+- [ ] `{"accion":"luz","estado":"toggle"}` con `mosquitto_pub` → el relé conmuta. *(Para probar solo el relé: sketch [firmware/pruebas/04c_rele_mqtt/](firmware/pruebas/04c_rele_mqtt/04c_rele_mqtt.ino) y `uv run laptop/pruebas/foco.py on`, `off` o `toggle`.)*
 - [ ] Probar con `mosquitto_pub` mientras suena una frase (con el parlante conectado).
 
 > **Si el ESP32 imprime `falló (rc=-2)`:** no llega al broker. Revisar que la laptop siga en el hotspot (`ipconfig`) y que `MQTT_HOST` en `config.h` sea su IP ahí (con el iPhone suele ser **172.20.10.2**). El 2026-10-28 Windows se cambió solo a la red de UTEC en medio de la prueba: desactivar "Conectar automáticamente" en las otras redes.
@@ -341,6 +345,7 @@ Completar a medida que se prueba. Sirve como evidencia para el informe final.
 | EMG: aciertos en 10 apretones | 2026-10-29 | ✅ 15 detectados, sin conteo exacto | Masetero, casa sin ruido, dedo como sujeción. Hizo "más de 10"; no se contaron, así que no hay % de aciertos. 2 de 2 apretones largos dieron `CANCELAR`. Datos: `docs/resultados/2026-10-29_emg_masetero_eventos.txt` |
 | EMG: falsos en 5 min de reposo | 2026-10-29 | ✅ 0 | Hablando y tragando normal; los 3 eventos fueron apretones a propósito. Falta repetir con ruido (cargador, salón) y con vincha |
 | Relé: lógica (HIGH o LOW = encendido) | 2026-10-28 | ✅ LOW | JQC3F-05VDC-C; conmuta solo con VCC del módulo a 3V3 (provisional, falta transistor). Sin carga de 12 V todavía |
+| Relé de 2 canales (reemplaza al JQC3F) | 2026-11-08 | ✅ LOW | VCC 5 V, IN directo a D26, sin transistor. Carga en COM y NO, probado con el profesor; el foco arranca apagado |
 | Buzzer | 2026-10-28 | ✅ | Activo, directo a D27 sin transistor (suena bien a 3,3 V). `04b_buzzer`: 3 pitidos cada 3 s |
 | Buzzer por MQTT (`alerta`) | 2026-10-28 | ✅ | `mosquitto_pub` → broker → ESP32 → buzzer 2 s, 2 de 2. La frase 5 también lo activa. Falta probarlo con una frase sonando |
 
@@ -357,17 +362,14 @@ Firmware: [firmware/nodo_asistivo/](firmware/nodo_asistivo/nodo_asistivo.ino). U
 | Rieles | **3V3** → EMG, MPU6050, MAX30102 · **VIN (5 V)** → relé · **los dos − unidos al GND** (nunca unir los +) |
 | EMG SEN0240 | rojo 3V3 · negro GND · azul **D34** |
 | MPU6050 y MAX30102 | VCC/VIN 3V3 · GND · SDA **D21** · SCL **D22** (bus compartido; cable largo hasta la vincha y el dedo) |
-| Relé | VCC **5 V** · GND · IN → **colector de Q1** |
-| Q1 (2N2222) | **D26 → 1 kΩ → base** · emisor GND · colector → IN del relé. Ahora el relé se enciende con **HIGH** |
+| Relé (2 canales) | VCC **5 V** · GND · IN del canal usado → **D26**, directo y sin transistor. Se enciende con **LOW** |
 | Buzzer | + (pata larga) → **D27** · − → GND. Directo, sin transistor (sección 5.2) |
 | Carga del relé | cable + de la lámpara USB cortado: un extremo a **COM**, el otro a **NO** |
-
-Patas del 2N2222 (cara plana hacia uno): **E – B – C**. Si con D26 en LOW el relé no se apaga, poner **10 kΩ entre IN y 5 V**.
 
 ### 7.1 Preparación
 - [ ] Hotspot del celular; la laptop conectada a él. IP de la laptop: `ip -4 addr` (Linux) o `ipconfig`.
 - [ ] Firewall: puerto **1883** abierto (sección 3).
-- [ ] `firmware/nodo_asistivo/config.h` copiado de `config.example.h`: WiFi, `MQTT_HOST` = IP de la laptop, `PARLANTE` = parte del nombre (`"xiaomi"`), `RELE_ENCENDIDO HIGH`.
+- [ ] `firmware/nodo_asistivo/config.h` copiado de `config.example.h`: WiFi, `MQTT_HOST` = IP de la laptop, `PARLANTE` = parte del nombre (`"xiaomi"`), `RELE_ENCENDIDO LOW`.
 - [ ] Cargar `nodo_asistivo` con **Partition Scheme: Huge APP**. En Linux: **`herramientas/cargar_nodo.sh`** pone sola la IP actual de la laptop en `MQTT_HOST`, compila y carga (avisa si la red o el firewall no cuadran).
 - [ ] Laptop: **`laptop/iniciar.sh`** arranca el broker y abre la interfaz y el dashboard (`--vision` suma la mirada; `--simulador`, el ESP32 simulado). A mano: `mosquitto -c laptop/mosquitto.conf -v` y abrir `laptop/interfaz/index.html` y `laptop/dashboard/index.html`.
 

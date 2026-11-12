@@ -4,15 +4,9 @@ Lo que falta para terminar el prototipo. Marcar cada casilla al comprarlo y hace
 
 ## Urgente: actuadores
 
-### Transistores NPN y resistencias
-- [ ] **3 transistores NPN pequeños** (TO-92): **2N2222A**, PN2222A, S8050, BC547 o 2N3904. Cualquiera sirve; comprar 3 para tener repuesto.
-- [ ] **3 resistencias de 1 kΩ** (bandas marrón – negro – rojo).
-
-**Para qué:**
-1. ~~**Buzzer**~~: ya no hace falta. Suena bien directo a D27 (CHECKLIST, sección 5.2). El kit no traía transistor; el que parecía uno es un **LM35DZ** (sensor de temperatura).
-2. **Relé:** el módulo JQC3F-05VDC-C es activo en LOW y no se apaga con 3,3 V. Ahora funciona provisionalmente con su VCC en 3V3, pero la bobina es de 5 V y queda justa. Con un transistor que lleve IN a GND, el módulo vuelve a 5 V (CHECKLIST, sección 5.1).
-
-> **Ojo con el orden de las patas** (cara plana hacia uno, patas abajo): 2N2222A, PN2222A, S8050 y 2N3904 = **E – B – C**; BC547 = **C – B – E**; C1815 = **E – C – B**. Leer el texto impreso antes de montarlo.
+### Transistores NPN y resistencias: ya no hacen falta
+1. **Buzzer:** suena bien directo a D27 (CHECKLIST, sección 5.2). El kit no traía transistor; el que parecía uno es un **LM35DZ** (sensor de temperatura).
+2. **Relé:** se reemplazó el JQC3F-05VDC-C por un módulo de 2 canales, con VCC a 5 V e IN directo a D26 (CHECKLIST, sección 5.1).
 
 
 ### Algo que el relé encienda (frase 4: «Enciende la luz»)

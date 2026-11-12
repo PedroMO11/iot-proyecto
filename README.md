@@ -61,7 +61,7 @@ Un prototipo de bajo costo para que una persona con movilidad reducida severa y 
 | MPU6050 (GY-521) | Navegación con la cabeza | I2C 0x68 |
 | MAX30102 | Pulso y SpO₂ | I2C 0x57. Lecturas referenciales; no es un dispositivo médico. |
 | Parlante Bluetooth | Voz | Cualquiera que acepte A2DP |
-| Relé 1 canal optoacoplado (bobina 5 V) | Foco LED 12 V | Se activa con 3,3 V |
+| Relé de 2 canales optoacoplado (bobina 5 V) | Foco LED 12 V | Se usa un canal: VCC a 5 V, IN directo a GPIO26, se activa con LOW |
 | Buzzer activo de 2 patas | Alerta al cuidador | Directo al GPIO27, sin transistor: suena bien a 3,3 V |
 | Laptop | Broker, visión, menú, dashboard | |
 
@@ -108,7 +108,7 @@ Todo el equipo debe respetar estos topics y formatos, para que cada parte pueda 
 | `asistivo/nodo1/emg/evento` | ESP32 | Interfaz | 1 | `{"tipo":"confirmar","ts":123456}` o `{"tipo":"cancelar","ts":...}` |
 | `asistivo/nodo1/imu/evento` | ESP32 | Interfaz | 1 | `{"dir":"izq"}`, con `dir` = `izq`, `der`, `arriba` o `abajo` |
 | `asistivo/nodo1/vitales` | ESP32 | Dashboard | 0 | `{"bpm":72,"spo2":98,"ts":...}`, cada 1 s |
-| `asistivo/nodo1/cmd` | Interfaz | ESP32 | 1 | `{"accion":"frase","id":3}`, `{"accion":"luz","estado":"toggle"}` o `{"accion":"alerta"}` |
+| `asistivo/nodo1/cmd` | Interfaz | ESP32 | 1 | `{"accion":"frase","id":3}`, `{"accion":"luz","estado":"on"}` (`estado` = `on`, `off` o `toggle`) o `{"accion":"alerta"}` |
 | `asistivo/nodo1/estado` | ESP32 (LWT) | Interfaz, dashboard | 1, retenido | `"online"` / `"offline"` |
 | `asistivo/nodo1/ping` → `pong` | Dashboard → ESP32 | Dashboard | 0 | El ESP32 devuelve en `pong` el mismo texto que recibe en `ping` (ya lo hace `02b`). El dashboard mide así la latencia cada 2 s |
 | `asistivo/nodo1/actuadores` | ESP32 | Dashboard | 1, retenido | `{"luz":true}` (estado del relé) |
@@ -135,7 +135,7 @@ Todo el equipo debe respetar estos topics y formatos, para que cada parte pueda 
 /
 ├── README.md                  ← este documento
 ├── CHECKLIST_ARMADO.md        ← pruebas paso a paso con casillas y registro de resultados
-├── COMPRAS.md                 ← lo que falta comprar (transistores, carga del relé, cables)
+├── COMPRAS.md                 ← lo que falta comprar (carga del relé, cables)
 ├── .gitignore                 ← excluye config.h, .venv, __pycache__, .pio, el modelo y la calibración de la visión
 ├── pyproject.toml             ← dependencias de Python (uv)
 ├── uv.lock                    ← versiones exactas (sí se sube)
@@ -151,7 +151,8 @@ Todo el equipo debe respetar estos topics y formatos, para que cada parte pueda 
 │   │   ├── 03c_emg_senal/
 │   │   ├── 03c_emg_eventos/
 │   │   ├── 04a_rele/
-│   │   └── 04b_buzzer/
+│   │   ├── 04b_buzzer/
+│   │   └── 04c_rele_mqtt/     ← foco por MQTT, sin sensores ni audio
 │   └── nodo_asistivo/         ← firmware final integrado
 │       ├── nodo_asistivo.ino
 │       ├── config.example.h   ← plantilla (sí se sube)
@@ -161,7 +162,7 @@ Todo el equipo debe respetar estos topics y formatos, para que cada parte pueda 
 │   └── wav_a_header.py        ← convierte los .wav en frases.h
 ├── laptop/
 │   ├── mosquitto.conf
-│   ├── pruebas/               ← latencia_mqtt.py, simulador_nodo.py (ESP32 simulado)
+│   ├── pruebas/               ← latencia_mqtt.py, simulador_nodo.py (ESP32 simulado), foco.py (on/off por MQTT)
 │   ├── web/                   ← cliente MQTT por WebSocket y configuración (compartidos por interfaz y dashboard)
 │   ├── vision/                ← mirada.py: MediaPipe, punto de la mirada y casilla 1..6
 │   │   ├── face_landmarker.task ← modelo (se descarga solo, NO se sube)

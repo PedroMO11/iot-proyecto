@@ -37,11 +37,12 @@
 #define IMU_SIGNO_PITCH    1                // -1 si "adelante" da pitch negativo
 #define IMU_SIGNO_ROLL     1                // -1 si "izquierda" da roll positivo
 #define IMU_INTERCAMBIAR   0                // 1 si el sensor quedó girado 90° (pitch ↔ roll)
+#define IMU_FRENTE         1                // 1 = vertical en la frente con los pines hacia abajo; 0 = plano
 
 // ---- Bus I2C (MPU6050 + MAX30102) ----
 #define I2C_HZ             100000           // 100 kHz: más tolerante con los cables largos de la vincha
 
 // ---- Actuadores (CHECKLIST_ARMADO.md, sección 5) ----
-// Con el transistor 2N2222 entre D26 e IN, el relé se enciende con HIGH. Sin transistor: LOW.
-#define RELE_ENCENDIDO     HIGH
+// Módulo de 2 canales con IN directo a D26: se enciende con LOW. HIGH solo si IN se maneja con un transistor.
+#define RELE_ENCENDIDO     LOW
 #define BUZZER_ENCENDIDO   HIGH             // buzzer activo directo a D27, sin transistor (suena bien a 3,3 V)

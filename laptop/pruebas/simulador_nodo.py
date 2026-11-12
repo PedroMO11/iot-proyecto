@@ -69,7 +69,7 @@ def al_recibir(c, datos, msg):
         print(f"[sim] {accion}: listo")
         return
     if accion == "luz":
-        estado["luz"] = not estado["luz"]
+        estado["luz"] = {"on": True, "off": False}.get(cmd.get("estado"), not estado["luz"])
         print(f"[sim] relé → luz {'ENCENDIDA' if estado['luz'] else 'apagada'}")
         publicar_actuadores(c)
     elif accion == "alerta":

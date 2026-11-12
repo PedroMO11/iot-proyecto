@@ -37,6 +37,12 @@ bool leer(float a[3], float g[3]) {
   int16_t v[7];
   for (int i = 0; i < 7; i++) v[i] = (int16_t)(Wire.read() << 8 | Wire.read());
   for (int i = 0; i < 3; i++) { a[i] = v[i] / LSB_G; g[i] = v[i + 4] / LSB_DPS; }   // v[3] = temperatura
+#if IMU_FRENTE
+  // Vertical con X hacia arriba: pitch y roll serían inestables. Se giran 90° los ejes (x, y, z) → (z, −y, x)
+  // en acelerómetro y giroscopio, para que el resto del cálculo vea un sensor plano.
+  float t_ = a[0]; a[0] = a[2]; a[2] = t_; a[1] = -a[1];
+  t_ = g[0]; g[0] = g[2]; g[2] = t_; g[1] = -g[1];
+#endif
   return true;
 }
 
