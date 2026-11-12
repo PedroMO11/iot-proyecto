@@ -24,23 +24,23 @@ El código de cada prueba está en [firmware/pruebas/](firmware/pruebas/) y en [
 ## 0. Preparación
 
 ### Seguridad eléctrica (siempre)
-- [ ] **Desconectar el USB del ESP32 antes de cablear o mover cables.**
-- [ ] Todo comparte **GND común** con el ESP32.
-- [ ] Nunca conectar 5 V ni 12 V a un GPIO. Los GPIO del ESP32 son de **3,3 V**.
-- [ ] Para el EMG, usar la laptop **desenchufada del cargador** (a batería), porque el cargador mete ruido de 60 Hz.
+- [x] **Desconectar el USB del ESP32 antes de cablear o mover cables.**
+- [x] Todo comparte **GND común** con el ESP32.
+- [x] Nunca conectar 5 V ni 12 V a un GPIO. Los GPIO del ESP32 son de **3,3 V**.
+- [x] Para el EMG, usar la laptop **desenchufada del cargador** (a batería), porque el cargador mete ruido de 60 Hz.
 
 ### Software
 Instrucciones en el [README, sección 6](README.md#6-preparar-el-entorno).
-- [ ] Arduino IDE 2 con el paquete de placas **esp32** y la placa **ESP32 Dev Module**.
-- [ ] **Partition Scheme: "Huge APP (3MB No OTA)"**.
-- [ ] Librerías instaladas: `ESP32-A2DP` (ZIP), `PubSubClient`, `ArduinoJson` 7, `SparkFun MAX3010x` (`Adafruit MPU6050` ya no hace falta: ver 4.1).
-- [ ] **uv** instalado y `uv sync` corrido en la raíz del repositorio.
-- [ ] **ffmpeg** instalado.
-- [ ] Mosquitto instalado (se necesita a partir de la prueba B).
+- [x] Arduino IDE 2 con el paquete de placas **esp32** y la placa **ESP32 Dev Module**.
+- [x] **Partition Scheme: "Huge APP (3MB No OTA)"**.
+- [x] Librerías instaladas: `ESP32-A2DP` (ZIP), `PubSubClient`, `ArduinoJson` 7, `SparkFun MAX3010x` (`Adafruit MPU6050` ya no hace falta: ver 4.1).
+- [x] **uv** instalado y `uv sync` corrido en la raíz del repositorio.
+- [x] **ffmpeg** instalado.
+- [x] Mosquitto instalado (se necesita a partir de la prueba B).
 
 ### Prueba de vida del ESP32
-- [ ] Cargar *File → Examples → 01.Basics → Blink* (en el DevKit V1 el LED azul es el GPIO2: cambiar `LED_BUILTIN` por `2` si no compila).
-- [ ] ✅ El LED parpadea. Si no carga, mantener presionado el botón **BOOT** mientras dice "Connecting...".
+- [x] Cargar *File → Examples → 01.Basics → Blink* (en el DevKit V1 el LED azul es el GPIO2: cambiar `LED_BUILTIN` por `2` si no compila).
+- [x] ✅ El LED parpadea. Si no carga, mantener presionado el botón **BOOT** mientras dice "Connecting...".
 
 ---
 
@@ -58,6 +58,8 @@ Instrucciones en el [README, sección 6](README.md#6-preparar-el-entorno).
 | 6 | `frase6` | Siento dolor |
 
 ### 1.1 Grabar en el iPhone 15 (app Notas de voz)
+> **No se usó:** las frases se generaron con TTS (ttsmaker), así que las casillas de 1.1 y 1.2 quedan sin marcar.
+
 - [ ] *(Opcional, mejor calidad)* **Ajustes → Apps → Notas de voz → Calidad de audio → Sin pérdida**. En versiones anteriores de iOS: *Ajustes → Notas de voz*.
 - [ ] Buscar un cuarto **silencioso** y sin eco (un cuarto con cortinas o ropa sirve).
 - [ ] iPhone a unos **20 cm** de la boca, sin soplar al micrófono.
@@ -70,7 +72,7 @@ Elegir una opción:
 - [ ] **Mac:** ⋯ → Compartir → **AirDrop** a tu Mac.
 - [ ] **Windows:** ⋯ → Compartir → **Guardar en Archivos** (iCloud Drive) y descargarlos desde icloud.com, o subirlos a **Google Drive**, o enviarlos por **correo**.
 - [ ] Si usas WhatsApp, enviarlos como **Documento**, no como audio, porque como audio WhatsApp los comprime y cambia el formato.
-- [ ] ✅ En una carpeta `audios/` del repositorio están `frase1.m4a` … `frase6.m4a`.
+- [x] ✅ En una carpeta `audios/` del repositorio están `frase1.m4a` … `frase6.m4a`.
 
 ### 1.3 Convertir a WAV de 16 kHz mono
 Abrir una terminal **dentro de la carpeta `audios/`**:
@@ -85,7 +87,7 @@ for i in 1 2 3 4 5 6; do ffmpeg -y -i frase$i.m4a -af loudnorm -ac 1 -ar 16000 -
 ```
 `loudnorm` iguala el volumen de las 6 frases.
 
-- [ ] ✅ Están `frase1.wav` … `frase6.wav` y se escuchan bien al abrirlos en la laptop.
+- [x] ✅ Están `frase1.wav` … `frase6.wav` y se escuchan bien al abrirlos en la laptop.
 
 <details>
 <summary>Alternativa sin terminal: Audacity</summary>
@@ -100,13 +102,13 @@ for i in 1 2 3 4 5 6; do ffmpeg -y -i frase$i.m4a -af loudnorm -ac 1 -ar 16000 -
 ### 1.4 Convertir los WAV a un archivo `frases.h` para el ESP32
 Las frases se guardan en la flash del ESP32 como **arreglos de C**, sin sistema de archivos ni pasos extra de carga. El script [herramientas/wav_a_header.py](herramientas/wav_a_header.py) hace la conversión.
 
-- [ ] Desde la carpeta `audios/` ejecutar:
+- [x] Desde la carpeta `audios/` ejecutar:
   ```bash
   uv run ../herramientas/wav_a_header.py frases.h frase1.wav frase2.wav frase3.wav frase4.wav frase5.wav frase6.wav
   ```
-- [ ] ✅ Imprime algo como `frases.h: 6 frases, 380 KB en la flash`. Si dice que el formato está mal, repetir el paso 1.3.
-- [ ] Copiar `frases.h` a `firmware/pruebas/02a_a2dp_solo/` y `firmware/pruebas/02b_coexistencia/`, reemplazando el provisional (que solo tiene silencio).
-- [ ] Hacer commit de los `.m4a`, los `.wav` y los `frases.h`.
+- [x] ✅ Imprime algo como `frases.h: 6 frases, 380 KB en la flash`. Si dice que el formato está mal, repetir el paso 1.3.
+- [x] Copiar `frases.h` a `firmware/pruebas/02a_a2dp_solo/` y `firmware/pruebas/02b_coexistencia/`, reemplazando el provisional (que solo tiene silencio).
+- [x] Hacer commit de los `.m4a`, los `.wav` y los `frases.h`.
 
 ---
 
@@ -115,14 +117,14 @@ Las frases se guardan en la flash del ESP32 como **arreglos de C**, sin sistema 
 **Objetivo:** el ESP32 se conecta al parlante y reproduce una frase cuando escribes su número (1–6) en el Monitor Serie. Todavía sin WiFi.
 
 ### Preparación
-- [ ] Anotar el **nombre Bluetooth exacto** del parlante (como aparece en el iPhone; mayúsculas y espacios cuentan).
-- [ ] **Desconectar el parlante del iPhone o de cualquier otro dispositivo** (en el iPhone: *Bluetooth → ⓘ → Olvidar este dispositivo*). Un parlante conectado a otro equipo no acepta al ESP32.
-- [ ] Encender el parlante en **modo emparejamiento** (luz parpadeando).
+- [x] Anotar el **nombre Bluetooth exacto** del parlante (como aparece en el iPhone; mayúsculas y espacios cuentan).
+- [x] **Desconectar el parlante del iPhone o de cualquier otro dispositivo** (en el iPhone: *Bluetooth → ⓘ → Olvidar este dispositivo*). Un parlante conectado a otro equipo no acepta al ESP32.
+- [x] Encender el parlante en **modo emparejamiento** (luz parpadeando).
 
 ### Código
 Sketch: [firmware/pruebas/02a_a2dp_solo/](firmware/pruebas/02a_a2dp_solo/02a_a2dp_solo.ino)
-- [ ] La carpeta tiene el `frases.h` real (paso 1.4), no el provisional.
-- [ ] Cambiar `PARLANTE` por el nombre exacto del parlante.
+- [x] La carpeta tiene el `frases.h` real (paso 1.4), no el provisional.
+- [x] Cambiar `PARLANTE` por el nombre exacto del parlante.
 
 ### Checklist
 - [x] Compila y sube sin error. Si dice *"Sketch too big"*, revisar el **Partition Scheme** del paso 0.
@@ -142,16 +144,16 @@ Sketch: [firmware/pruebas/02a_a2dp_solo/](firmware/pruebas/02a_a2dp_solo/02a_a2d
 ⚠️ **Es la prueba más importante del proyecto.** El WiFi y el Bluetooth comparten la misma radio de 2,4 GHz. Si esto no funciona, hay que cambiar a plan B: el audio se reproduce desde la laptop.
 
 ### Preparación
-- [ ] Usar un **hotspot del celular o un router propio** (no el WiFi de la universidad).
-- [ ] La laptop y el ESP32 conectados a la **misma red**. Anotar la **IP de la laptop** (Windows: `ipconfig`; Mac: *Ajustes → Red*).
-- [ ] Mosquitto corriendo en la laptop con [laptop/mosquitto.conf](laptop/mosquitto.conf): `mosquitto -c laptop/mosquitto.conf -v`
-- [ ] En Windows, permitir Mosquitto en el firewall (red privada) si el ESP32 no logra conectarse.
+- [x] Usar un **hotspot del celular o un router propio** (no el WiFi de la universidad).
+- [x] La laptop y el ESP32 conectados a la **misma red**. Anotar la **IP de la laptop** (Windows: `ipconfig`; Mac: *Ajustes → Red*).
+- [x] Mosquitto corriendo en la laptop con [laptop/mosquitto.conf](laptop/mosquitto.conf): `mosquitto -c laptop/mosquitto.conf -v`
+- [x] En Windows, permitir Mosquitto en el firewall (red privada) si el ESP32 no logra conectarse.
 
 ### Código
 - ESP32: [firmware/pruebas/02b_coexistencia/](firmware/pruebas/02b_coexistencia/02b_coexistencia.ino). Además de las frases, responde en `asistivo/nodo1/pong` cada mensaje que le llega a `asistivo/nodo1/ping`.
 - Laptop: [laptop/pruebas/latencia_mqtt.py](laptop/pruebas/latencia_mqtt.py) manda 30 pings (uno por segundo) y calcula la latencia.
-- [ ] La carpeta del sketch tiene el `frases.h` real (paso 1.4).
-- [ ] Copiar [firmware/nodo_asistivo/config.example.h](firmware/nodo_asistivo/config.example.h) como `config.h` dentro de la carpeta del sketch y completar `WIFI_SSID`, `WIFI_PASS`, `MQTT_HOST` (IP de la laptop) y `PARLANTE`. `config.h` está en `.gitignore`: **no se sube**.
+- [x] La carpeta del sketch tiene el `frases.h` real (paso 1.4).
+- [x] Copiar [firmware/nodo_asistivo/config.example.h](firmware/nodo_asistivo/config.example.h) como `config.h` dentro de la carpeta del sketch y completar `WIFI_SSID`, `WIFI_PASS`, `MQTT_HOST` (IP de la laptop) y `PARLANTE`. `config.h` está en `.gitignore`: **no se sube**.
 
 ### Checklist
 - [x] El Monitor Serie muestra **WiFi OK**, **MQTT OK** y **Parlante CONECTADO**.
@@ -159,10 +161,10 @@ Sketch: [firmware/pruebas/02a_a2dp_solo/](firmware/pruebas/02a_a2dp_solo/02a_a2d
 - [x] Frase por MQTT: `mosquitto_pub -t asistivo/nodo1/cmd -q 1 -m "{\"accion\":\"frase\",\"id\":1}"` → suena "Tengo hambre". En Mac/Linux se pueden usar comillas simples: `-m '{"accion":"frase","id":1}'`.
 - [x] **Latencia sin audio:** correr `uv run laptop/pruebas/latencia_mqtt.py` sin reproducir nada. Anotar el promedio y el máximo en la sección 6.
 - [x] **Latencia con audio:** correr el script otra vez mientras se mandan frases seguidas (escribir 1, 2, 3… en el Monitor Serie). Anotar en la sección 6.
-- [ ] Durante el audio: ¿se corta la voz? ¿se cae el MQTT? ¿se reinicia el ESP32? Anotarlo.
+- [x] Durante el audio: ¿se corta la voz? ¿se cae el MQTT? ¿se reinicia el ESP32? Anotarlo.
 - [x] Desconectar el ESP32 → en `mosquitto_sub` aparece `offline` en pocos segundos. *(Con keepalive de 5 s: 3,6 s y 6 s en dos pruebas; el máximo teórico es ~7,5 s. Al reconectar el USB publica `online` en ~2 s y recupera los audífonos en ~20 s sin modo emparejamiento.)*
-- [ ] Dejarlo funcionando **10 minutos** mandando frases cada tanto. ¿Sigue estable? *(Parcial: 3,6 min estable, sin reinicios ni caídas. Falta la prueba completa.)*
-- [ ] ✅ **Aprobado si:** las frases suenan sin cortes, se reciben 30/30 pings y la latencia de ida es menor a 300 ms incluso con audio.
+- [x] Dejarlo funcionando **10 minutos** mandando frases cada tanto. ¿Sigue estable? *(Primero 3,6 min estable, sin reinicios ni caídas; los 10 min completos se hicieron en la prueba de conjunto, sección 7.7.)*
+- [x] ✅ **Aprobado si:** las frases suenan sin cortes, se reciben 30/30 pings y la latencia de ida es menor a 300 ms incluso con audio.
 - [ ] ❌ **Si falla:** avisar al grupo y pasar al plan B (la laptop reproduce el audio). Si el ESP32 se reinicia al arrancar, probar invirtiendo el orden en `setup()` (primero `a2dp.start`, luego el WiFi).
 
 ---
@@ -195,8 +197,8 @@ Sketch: [firmware/pruebas/03_escaner_i2c/](firmware/pruebas/03_escaner_i2c/03_es
 
 - [x] En el Serial Plotter: con el sensor quieto, las curvas están planas (sin deriva). *(Ruido ±0,05°; en reposo marca ~10° / −14° por el desvío del clon → el firmware debe calibrar la posición neutra al arrancar.)*
 - [x] Inclinar **adelante y atrás** mueve una curva; **izquierda y derecha** mueve la otra. Anotar cuál es cuál, porque depende de cómo quede montado en la vincha. *(Sensor plano: **adelante = pitch +**, **izquierda = roll −**. Marcar la orientación en el módulo.)*
-- [ ] Montar el sensor en la vincha y medir cuántos grados se inclina la cabeza **cómodamente** (meta: unos 15°, no 45°). *(En la frente, vertical y con los pines hacia abajo: `IMU_FRENTE 1`, y el neutro debe dar cerca de 0°. Con `IMU_FRENTE 0` daba pitch −84,8° y gestos falsos al teclear. Si el chip mira hacia la frente: `IMU_SIGNO_PITCH -1` e `IMU_SIGNO_ROLL -1`.)*
-- [ ] *(Siguiente)* Agregar umbrales con histéresis para generar **un** evento por inclinación (`izq`, `der`, `arriba`, `abajo`).
+- [x] Montar el sensor en la vincha y medir cuántos grados se inclina la cabeza **cómodamente** (meta: unos 15°, no 45°). *(En la frente, vertical y con los pines hacia abajo: `IMU_FRENTE 1`, y el neutro debe dar cerca de 0°. Con `IMU_FRENTE 0` daba pitch −84,8° y gestos falsos al teclear. Si el chip mira hacia la frente: `IMU_SIGNO_PITCH -1` e `IMU_SIGNO_ROLL -1`.)*
+- [x] *(Siguiente)* Agregar umbrales con histéresis para generar **un** evento por inclinación (`izq`, `der`, `arriba`, `abajo`).
 
 ### 4.2 MAX30102: pulso y SpO₂
 
@@ -216,8 +218,8 @@ Sketch: [firmware/pruebas/03_escaner_i2c/](firmware/pruebas/03_escaner_i2c/03_es
 - [x] ~~*Example5_HeartRate*~~ **Su BPM no sirve:** salta entre 7 y 213 (el detector se engancha a la luz ambiental).
 - [x] ~~*Example8_SPO2*~~ **Cuelga el ESP32** (usa el GPIO11, que es de la flash). Usar [firmware/pruebas/03b_max30102/](firmware/pruebas/03b_max30102/03b_max30102.ino), que además lee la FIFO directo (con la librería llegaban ~10 de las 25 muestras/s), usa brillo 30 (con 60 se saturaba al 96 %) y no se cuelga si se suelta un cable. **SpO₂ 99 %**.
 - [x] **El pulso del algoritmo de Maxim tampoco sirve** (125 BPM con el pulso real en ~79): cuenta la muesca dícrota como otro latido. El pulso se calcula con un pasa banda de 0,7–3,5 Hz y los intervalos entre latidos (validado con la gráfica de `docs/resultados/`).
-- [ ] Comparar con un oxímetro de farmacia o un reloj: anotar la diferencia en la sección 6.
-- [ ] Probar sujetando el dedo con una **liga o cinta**, porque la presión cambia mucho la lectura. *(El 2026-10-28 el módulo se apagó 3 veces al presionarlo en el protoboard: conectarlo con dupont, sin protoboard.)*
+- [x] Comparar con un oxímetro de farmacia o un reloj: anotar la diferencia en la sección 6.
+- [x] Probar sujetando el dedo con una **liga o cinta**, porque la presión cambia mucho la lectura. *(El 2026-10-28 el módulo se apagó 3 veces al presionarlo en el protoboard: conectarlo con dupont, sin protoboard.)*
 
 **Si no aparece 0x57:** revisar SDA y SCL (a menudo están cruzados). Algunos módulos morados genéricos tienen problemas con las resistencias pull-up; probar alimentando VIN con 5 V **solo si el módulo tiene regulador**, o cambiar de módulo.
 
@@ -242,17 +244,17 @@ Sketch: [firmware/pruebas/03_escaner_i2c/](firmware/pruebas/03_escaner_i2c/03_es
 - [x] **Laptop a batería, desenchufada del cargador** (el cargador mete ruido de 60 Hz).
 
 **Colocación del electrodo sobre el masetero:**
-- [ ] Apretar los dientes con un dedo en la mejilla, entre la oreja y el ángulo de la mandíbula: el músculo que "salta" es el masetero.
-- [ ] Limpiar la piel con alcohol y dejarla secar.
-- [ ] Colocar el electrodo **sobre el masetero**, con su lado largo **en la dirección de las fibras** (del pómulo hacia el ángulo de la mandíbula, más o menos vertical).
-- [ ] Sujetarlo con una **banda elástica o vincha** para que quede presionado contra la piel sin moverse.
+- [x] Apretar los dientes con un dedo en la mejilla, entre la oreja y el ángulo de la mandíbula: el músculo que "salta" es el masetero.
+- [x] Limpiar la piel con alcohol y dejarla secar.
+- [x] Colocar el electrodo **sobre el masetero**, con su lado largo **en la dirección de las fibras** (del pómulo hacia el ángulo de la mandíbula, más o menos vertical).
+- [x] Sujetarlo con una **banda elástica o vincha** para que quede presionado contra la piel sin moverse.
 
 **Sketch 1: ver la señal.** [firmware/pruebas/03c_emg_senal/](firmware/pruebas/03c_emg_senal/03c_emg_senal.ino): muestrea a 1 kHz, resta el nivel medio, rectifica y grafica la señal y su envolvente (media móvil de 50 ms).
 
-- [ ] En el Serial Plotter, con la mandíbula **relajada**, la envolvente queda baja y plana.
-- [ ] Al **apretar los dientes**, la envolvente sube claramente (varias veces el nivel de reposo).
-- [ ] **Hablar, tragar y mover la cabeza** sube poco o nada comparado con el apretón. Si sube mucho, reacomodar el electrodo.
-- [ ] Anotar los niveles de reposo y de apretón en la sección 6.
+- [x] En el Serial Plotter, con la mandíbula **relajada**, la envolvente queda baja y plana.
+- [x] Al **apretar los dientes**, la envolvente sube claramente (varias veces el nivel de reposo).
+- [x] **Hablar, tragar y mover la cabeza** sube poco o nada comparado con el apretón. Si sube mucho, reacomodar el electrodo.
+- [x] Anotar los niveles de reposo y de apretón en la sección 6.
 
 > **Si la señal sale plana en 0:** puede que el GPIO34 esté **saturado** (4095, ~3,17 V fijos), y al restarle el nivel medio queda en 0. En reposo debe marcar **~1,5 V con ruido**. Revisar que el azul esté en **D34** y el rojo en **3V3**, que los **3 contactos** del electrodo toquen la piel y que el cable de 3,5 mm esté metido hasta el fondo. *(Pasó el 2026-10-21 y se resolvió revisando cables y electrodo.)*
 
@@ -268,13 +270,13 @@ La calibración se repite **cada vez que arranca el ESP32**: no queda guardada. 
 - [x] **10 apretones cortos** → ¿cuántos CONFIRMAR? Meta: 9 o más. *(15 `CONFIRMAR` en 65 s, con intervalos regulares de ~4,3 s; se hicieron "más de 10", sin conteo exacto, así que no se puede calcular el porcentaje de aciertos. Repetir con 10 contados.)*
 - [x] **5 minutos relajado**, hablando y tragando normal → ¿cuántos eventos falsos? Meta: 1 o menos. *(0 falsos: los 3 eventos fueron apretones a propósito. Ojo: en una grabación aparte, 2 tragadas de 50 s dieron ráfagas de ~0,7 s tan altas como un apretón; en estos 5 min no dispararon, pero no se contó cuántas tragadas hubo.)*
 - [ ] Si hay muchos falsos: subir el multiplicador (3σ → 4σ) o reacomodar el electrodo. Si cuesta activarlo: bajarlo a 2,5σ. *(Con σ chica manda `MARGEN_MIN`: en las grabaciones de 21 y 28, σ fue 1,4 y 3,3, así que el umbral quedó en μ + 50.)*
-- [ ] **Prueba con ruido, en casa:** reiniciar con la laptop **enchufada al cargador** y sentado junto a una zapatilla con cosas enchufadas; repetir los 10 apretones cortos y 3 largos. Anotar μ y los aciertos: así se simula el salón de la presentación.
+- [x] **Prueba con ruido, en casa:** reiniciar con la laptop **enchufada al cargador** y sentado junto a una zapatilla con cosas enchufadas; repetir los 10 apretones cortos y 3 largos. Anotar μ y los aciertos: así se simula el salón de la presentación.
 
 ---
 
 ## 5. Actuadores
 
-### 5.1 Relé optoacoplado → foco LED 12 V
+### 5.1 Relé optoacoplado → foco de 220 V
 
 **Conexión del lado de control:**
 
@@ -284,10 +286,11 @@ La calibración se repite **cada vez que arranca el ESP32**: no queda guardada. 
 | GND | GND |
 | IN | GPIO26 |
 
-**Conexión del lado de potencia (recién al final):**
-- Fuente de 12 V (+) → **COM** del relé
-- **NO** del relé → (+) del foco LED 12 V
-- (−) del foco → (−) de la fuente de 12 V
+**Conexión del lado de potencia (recién al final, con el cable desenchufado):**
+- Cortar **un solo conductor** del cable del foco (de preferencia la fase): un extremo a **COM** y el otro a **NO** del relé.
+- El otro conductor queda sin cortar, directo del enchufe al foco.
+- Los bornes de 220 V deben quedar **cubiertos** (cinta aislante o el enclosure) y lejos del ESP32 y de los cables de los sensores. Ningún conductor de 220 V se une al GND del circuito.
+- Revisar que el contacto del relé soporte la carga (lo impreso en el relé, típicamente 10 A a 250 VAC; un foco consume mucho menos).
 
 Sketch: [firmware/pruebas/04a_rele/](firmware/pruebas/04a_rele/04a_rele.ino). Alterna el GPIO26 entre HIGH y LOW cada 2 s y lo imprime en el Monitor Serie.
 
@@ -297,9 +300,9 @@ Sketch: [firmware/pruebas/04a_rele/](firmware/pruebas/04a_rele/04a_rele.ino). Al
 
 > **Actualización (2026-11-08): se reemplazó el JQC3F de 1 canal por un módulo de 2 canales.** Quedó con VCC a **5 V** e IN **directo a D26**, sin transistor, y se enciende con **LOW** (`RELE_ENCENDIDO LOW`). El 2N2222, la lógica HIGH y el VCC a 3V3 de las notas anteriores ya no aplican.
 
-- [ ] Medir el voltaje de IN con D26 desconectado. Si supera 3,3 V, ese pin queda expuesto: usar el jumper **JD-VCC** si el módulo lo trae (VCC a 3V3, JD-VCC a 5 V).
-- [ ] Recién entonces conectar el **foco de 12 V** y la fuente. Nunca usar 220 V en este proyecto.
-- [ ] ✅ El foco prende y apaga cada 2 s.
+- [x] Medir el voltaje de IN con D26 desconectado. Si supera 3,3 V, ese pin queda expuesto: usar el jumper **JD-VCC** si el módulo lo trae (VCC a 3V3, JD-VCC a 5 V).
+- [x] Recién entonces conectar el **foco de 220 V**, con el cable desenchufado, y enchufarlo al final.
+- [x] ✅ El foco prende y apaga cada 2 s.
 
 ### 5.2 Buzzer activo directo al GPIO27 (sin transistor)
 
@@ -319,11 +322,11 @@ Sketch: [firmware/pruebas/04b_buzzer/](firmware/pruebas/04b_buzzer/04b_buzzer.in
 ### 5.3 Actuadores por MQTT
 - [x] Agregar al sketch de coexistencia (paso 3) las acciones `{"accion":"luz","estado":"toggle"}` → relé y `{"accion":"alerta"}` → buzzer por 2 s. *(Hecho en `02b_coexistencia`: además, la frase 4 conmuta la luz y la frase 5 activa el buzzer. Por el Monitor Serie: `a` = alerta, `l` = luz.)*
 - [x] `{"accion":"alerta"}` con `mosquitto_pub` → el buzzer suena 2 s. *(2026-10-28, 2 de 2. `{"accion":"frase","id":5}` también lo activa.)*
-- [ ] `{"accion":"luz","estado":"toggle"}` con `mosquitto_pub` → el relé conmuta. *(Para probar solo el relé: sketch [firmware/pruebas/04c_rele_mqtt/](firmware/pruebas/04c_rele_mqtt/04c_rele_mqtt.ino) y `uv run laptop/pruebas/foco.py on`, `off` o `toggle`.)*
-- [ ] Probar con `mosquitto_pub` mientras suena una frase (con el parlante conectado).
+- [x] `{"accion":"luz","estado":"toggle"}` con `mosquitto_pub` → el relé conmuta. *(Para probar solo el relé: sketch [firmware/pruebas/04c_rele_mqtt/](firmware/pruebas/04c_rele_mqtt/04c_rele_mqtt.ino) y `uv run laptop/pruebas/foco.py on`, `off` o `toggle`.)*
+- [x] Probar con `mosquitto_pub` mientras suena una frase (con el parlante conectado).
 
 > **Si el ESP32 imprime `falló (rc=-2)`:** no llega al broker. Revisar que la laptop siga en el hotspot (`ipconfig`) y que `MQTT_HOST` en `config.h` sea su IP ahí (con el iPhone suele ser **172.20.10.2**). El 2026-10-28 Windows se cambió solo a la red de UTEC en medio de la prueba: desactivar "Conectar automáticamente" en las otras redes.
-- [ ] ✅ **Con esto, el núcleo IoT está completo** (sensores + MQTT + actuadores).
+- [x] ✅ **Con esto, el núcleo IoT está completo** (sensores + MQTT + actuadores).
 
 ---
 
@@ -344,8 +347,8 @@ Completar a medida que se prueba. Sirve como evidencia para el informe final.
 | EMG: envolvente en reposo vs apretón | 2026-10-21 / 28 | ✅ antebrazo (21; 28 con filtro) · ❌ masetero (28, saturado) | **Antebrazo** (flexores): reposo ~11 (σ 1,2), puños 300–420 cuentas (~30×). Simulando `03c_emg_eventos` sobre la grabación, el umbral μ+20 ≈ 31 da 2 falsos en reposo; con ~60 no hay falsos. **28, salón con 60 Hz, con filtro:** reposo ~30 (σ 3,3); 6 puños de 1,0–2,6 s, de 100–150 de media (picos 240–365). Simulando el sketch: con un solo umbral, 7 `CONFIRMAR` y ningún `CANCELAR` (el más largo se partió en dos); con histéresis, 5 `CANCELAR` y 1 `CONFIRMAR` (el de 1,0 s). Gráficas y datos en `docs/resultados/` |
 | EMG: aciertos en 10 apretones | 2026-10-29 | ✅ 15 detectados, sin conteo exacto | Masetero, casa sin ruido, dedo como sujeción. Hizo "más de 10"; no se contaron, así que no hay % de aciertos. 2 de 2 apretones largos dieron `CANCELAR`. Datos: `docs/resultados/2026-10-29_emg_masetero_eventos.txt` |
 | EMG: falsos en 5 min de reposo | 2026-10-29 | ✅ 0 | Hablando y tragando normal; los 3 eventos fueron apretones a propósito. Falta repetir con ruido (cargador, salón) y con vincha |
-| Relé: lógica (HIGH o LOW = encendido) | 2026-10-28 | ✅ LOW | JQC3F-05VDC-C; conmuta solo con VCC del módulo a 3V3 (provisional, falta transistor). Sin carga de 12 V todavía |
-| Relé de 2 canales (reemplaza al JQC3F) | 2026-11-08 | ✅ LOW | VCC 5 V, IN directo a D26, sin transistor. Carga en COM y NO, probado con el profesor; el foco arranca apagado |
+| Relé: lógica (HIGH o LOW = encendido) | 2026-10-28 | ✅ LOW | JQC3F-05VDC-C; conmuta solo con VCC del módulo a 3V3 (provisional, falta transistor). Sin carga todavía |
+| Relé de 2 canales (reemplaza al JQC3F) | 2026-11-08 | ✅ LOW | VCC 5 V, IN directo a D26, sin transistor. Carga: foco de 220 V en COM y NO, probado con el profesor; el foco arranca apagado |
 | Buzzer | 2026-10-28 | ✅ | Activo, directo a D27 sin transistor (suena bien a 3,3 V). `04b_buzzer`: 3 pitidos cada 3 s |
 | Buzzer por MQTT (`alerta`) | 2026-10-28 | ✅ | `mosquitto_pub` → broker → ESP32 → buzzer 2 s, 2 de 2. La frase 5 también lo activa. Falta probarlo con una frase sonando |
 
@@ -364,54 +367,54 @@ Firmware: [firmware/nodo_asistivo/](firmware/nodo_asistivo/nodo_asistivo.ino). U
 | MPU6050 y MAX30102 | VCC/VIN 3V3 · GND · SDA **D21** · SCL **D22** (bus compartido; cable largo hasta la vincha y el dedo) |
 | Relé (2 canales) | VCC **5 V** · GND · IN del canal usado → **D26**, directo y sin transistor. Se enciende con **LOW** |
 | Buzzer | + (pata larga) → **D27** · − → GND. Directo, sin transistor (sección 5.2) |
-| Carga del relé | cable + de la lámpara USB cortado: un extremo a **COM**, el otro a **NO** |
+| Carga del relé | **foco de 220 V**: un conductor del cable cortado, un extremo a **COM** y el otro a **NO**; bornes cubiertos (sección 5.1) |
 
 ### 7.1 Preparación
-- [ ] Hotspot del celular; la laptop conectada a él. IP de la laptop: `ip -4 addr` (Linux) o `ipconfig`.
-- [ ] Firewall: puerto **1883** abierto (sección 3).
-- [ ] `firmware/nodo_asistivo/config.h` copiado de `config.example.h`: WiFi, `MQTT_HOST` = IP de la laptop, `PARLANTE` = parte del nombre (`"xiaomi"`), `RELE_ENCENDIDO LOW`.
-- [ ] Cargar `nodo_asistivo` con **Partition Scheme: Huge APP**. En Linux: **`herramientas/cargar_nodo.sh`** pone sola la IP actual de la laptop en `MQTT_HOST`, compila y carga (avisa si la red o el firewall no cuadran).
-- [ ] Laptop: **`laptop/iniciar.sh`** arranca el broker y abre la interfaz y el dashboard (`--vision` suma la mirada; `--simulador`, el ESP32 simulado). A mano: `mosquitto -c laptop/mosquitto.conf -v` y abrir `laptop/interfaz/index.html` y `laptop/dashboard/index.html`.
+- [x] Hotspot del celular; la laptop conectada a él. IP de la laptop: `ip -4 addr` (Linux) o `ipconfig`.
+- [x] Firewall: puerto **1883** abierto (sección 3).
+- [x] `firmware/nodo_asistivo/config.h` copiado de `config.example.h`: WiFi, `MQTT_HOST` = IP de la laptop, `PARLANTE` = parte del nombre (`"xiaomi"`), `RELE_ENCENDIDO LOW`.
+- [x] Cargar `nodo_asistivo` con **Partition Scheme: Huge APP**. En Linux: **`herramientas/cargar_nodo.sh`** pone sola la IP actual de la laptop en `MQTT_HOST`, compila y carga (avisa si la red o el firewall no cuadran).
+- [x] Laptop: **`laptop/iniciar.sh`** arranca el broker y abre la interfaz y el dashboard (`--vision` suma la mirada; `--simulador`, el ESP32 simulado). A mano: `mosquitto -c laptop/mosquitto.conf -v` y abrir `laptop/interfaz/index.html` y `laptop/dashboard/index.html`.
 
 ### 7.2 Etapa 1: nodo y red
-- [ ] Monitor Serie: `[wifi] conectado`, `[mqtt] conectado`, `[imu] MPU6050 encontrado`, `[pulso] MAX30102 encontrado`, `[emg] listo: μ=… umbral=…` (mandíbula relajada los primeros 6 s).
-- [ ] Dashboard: **Nodo en línea**; la ficha muestra EMG, cabeza, sensor de pulso y parlante (llegan cada 5 s por `nodo1/diag`); hay latencia (ping/pong).
-- [ ] Desconectar el USB → el dashboard marca **DESCONECTADO** en ≤ 8 s (LWT). Reconectar → vuelve solo.
+- [x] Monitor Serie: `[wifi] conectado`, `[mqtt] conectado`, `[imu] MPU6050 encontrado`, `[pulso] MAX30102 encontrado`, `[emg] listo: μ=… umbral=…` (mandíbula relajada los primeros 6 s).
+- [x] Dashboard: **Nodo en línea**; la ficha muestra EMG, cabeza, sensor de pulso y parlante (llegan cada 5 s por `nodo1/diag`); hay latencia (ping/pong).
+- [x] Desconectar el USB → el dashboard marca **DESCONECTADO** en ≤ 8 s (LWT). Reconectar → vuelve solo.
 
 ### 7.3 Etapa 2: actuadores por MQTT (desde la interfaz, con el teclado)
-- [ ] Flechas + **Enter** en cada casilla: suena la frase 1–6 en el parlante.
-- [ ] Casilla **4** («Enciende la luz»): la lámpara se enciende; otra vez, se apaga. El dashboard muestra **Luz encendida/apagada**.
-- [ ] Casilla **5** («Llamar al cuidador»): el buzzer pita 2 s.
+- [x] Flechas + **Enter** en cada casilla: suena la frase 1–6 en el parlante.
+- [x] Casilla **4** («Enciende la luz»): el foco se enciende; otra vez, se apaga. El dashboard muestra **Luz encendida/apagada**.
+- [x] Casilla **5** («Llamar al cuidador»): el buzzer pita 2 s.
 
 ### 7.4 Etapa 3: sensores al dashboard
-- [ ] **Pulso:** dedo en el MAX30102 (fijo con liga) → en ~10 s aparecen FC y SpO₂. Comparar con un reloj u oxímetro: anotar en la sección 6.
-- [ ] **Cabeza:** con la vincha puesta, la fila «Cabeza» cambia al inclinar (adelante = primer número +, izquierda = segundo −). Si sale al revés o cruzado: `IMU_SIGNO_*` o `IMU_INTERCAMBIAR` en `config.h`. Tecla **I** de la interfaz: nueva posición neutra.
-- [ ] **EMG:** la fila «EMG» sube por encima del umbral al apretar la mandíbula y vuelve abajo al relajar. Si el reposo está cerca del umbral: tecla **E** (recalibrar) con la mandíbula relajada.
+- [x] **Pulso:** dedo en el MAX30102 (fijo con liga) → en ~10 s aparecen FC y SpO₂. Comparar con un reloj u oxímetro: anotar en la sección 6.
+- [x] **Cabeza:** con la vincha puesta, la fila «Cabeza» cambia al inclinar (adelante = primer número +, izquierda = segundo −). Si sale al revés o cruzado: `IMU_SIGNO_*` o `IMU_INTERCAMBIAR` en `config.h`. Tecla **I** de la interfaz: nueva posición neutra.
+- [x] **EMG:** la fila «EMG» sube por encima del umbral al apretar la mandíbula y vuelve abajo al relajar. Si el reposo está cerca del umbral: tecla **E** (recalibrar) con la mandíbula relajada.
 
 ### 7.5 Etapa 4: entradas del paciente en la interfaz
-- [ ] Inclinar la cabeza: el cursor se mueve **una** casilla por gesto (sin pasos dobles).
-- [ ] Apretón corto de mandíbula: **confirma** (suena la frase). Apretón largo (> 1 s): **cancela**.
-- [ ] Hablar, tragar y mover la cabeza: no confirma (o casi nunca).
-- [ ] *(Opcional)* Mirada: `uv run laptop/vision/mirada.py`, calibrar con **C**, comprobar con **K**.
+- [x] Inclinar la cabeza: el cursor se mueve **una** casilla por gesto (sin pasos dobles).
+- [x] Apretón corto de mandíbula: **confirma** (suena la frase). Apretón largo (> 1 s): **cancela**.
+- [x] Hablar, tragar y mover la cabeza: no confirma (o casi nunca).
+- [x] *(Opcional)* Mirada: `uv run laptop/vision/mirada.py`, calibrar con **C**, comprobar con **K**.
 
 ### 7.6 Etapa 5: escenarios completos (la demo)
-- [ ] «Enciende la luz»: llegar a la casilla 4 con la cabeza (o la mirada) y apretar la mandíbula → frase + lámpara.
-- [ ] «Llamar al cuidador»: casilla 5 → frase + buzzer + aparece en el registro del dashboard.
-- [ ] Cancelar: elegir una casilla y mantener el apretón > 1 s → no se envía nada.
-- [ ] Alarma de signos vitales: `mosquitto_pub -t asistivo/nodo1/vitales -m '{"bpm":135,"spo2":89}'` varias veces → el dashboard muestra la alarma.
-- [ ] Apagar y prender el parlante, y desconectar el WiFi un momento: el sistema se recupera solo.
+- [x] «Enciende la luz»: llegar a la casilla 4 con la cabeza (o la mirada) y apretar la mandíbula → frase + foco.
+- [x] «Llamar al cuidador»: casilla 5 → frase + buzzer + aparece en el registro del dashboard.
+- [x] Cancelar: elegir una casilla y mantener el apretón > 1 s → no se envía nada.
+- [x] Alarma de signos vitales: `mosquitto_pub -t asistivo/nodo1/vitales -m '{"bpm":135,"spo2":89}'` varias veces → el dashboard muestra la alarma.
+- [x] Apagar y prender el parlante, y desconectar el WiFi un momento: el sistema se recupera solo.
 
 ### 7.7 Etapa 6: mediciones para el informe
-- [ ] **Modo prueba** (tecla **M**): 20 selecciones con cabeza + mandíbula → tasa de aciertos (meta ≥ 90 %) y tiempo de selección (meta ≤ 5 s).
-- [ ] **Modo reposo**: 5 min sentado, hablando normal → activaciones accidentales (meta ≤ 1 / 5 min).
-- [ ] **Estabilidad**: 10 min con todo encendido → sin reinicios ni desconexiones; latencia (meta < 300 ms).
-- [ ] **Exportar CSV** en el dashboard y guardarlo en `docs/resultados/`.
+- [x] **Modo prueba** (tecla **M**): 20 selecciones con cabeza + mandíbula → tasa de aciertos (meta ≥ 90 %) y tiempo de selección (meta ≤ 5 s).
+- [x] **Modo reposo**: 5 min sentado, hablando normal → activaciones accidentales (meta ≤ 1 / 5 min).
+- [x] **Estabilidad**: 10 min con todo encendido → sin reinicios ni desconexiones; latencia (meta < 300 ms).
+- [x] **Exportar CSV** en el dashboard y guardarlo en `docs/resultados/`.
 
 | Prueba de conjunto | Fecha | Resultado | Notas |
 |---|---|---|---|
-| Etapa 1: nodo, red y LWT | | | |
-| Etapa 2: frases, luz, buzzer por MQTT | | | |
-| Etapa 3: pulso / cabeza / EMG en el dashboard | | | |
-| Etapa 4: cabeza mueve el cursor, mandíbula confirma | | | |
-| Etapa 5: escenarios de la demo | | | |
-| Etapa 6: aciertos · tiempo · accidentales · latencia | | | |
+| Etapa 1: nodo, red y LWT | | ✅ | |
+| Etapa 2: frases, luz, buzzer por MQTT | | ✅ | Luz = foco de 220 V |
+| Etapa 3: pulso / cabeza / EMG en el dashboard | | ✅ | |
+| Etapa 4: cabeza mueve el cursor, mandíbula confirma | | ✅ | |
+| Etapa 5: escenarios de la demo | | ✅ | |
+| Etapa 6: aciertos · tiempo · accidentales · latencia | | ✅ | Faltan anotar los valores (aciertos %, tiempo de selección, accidentales / 5 min, latencia mediana y p90) |

@@ -10,13 +10,9 @@ Lo que falta para terminar el prototipo. Marcar cada casilla al comprarlo y hace
 
 
 ### Algo que el relé encienda (frase 4: «Enciende la luz»)
-Un relé que solo hace clic no actúa sobre el mundo físico; en la demo tiene que encender algo. **Elegir una opción:**
+- [x] **Foco de 220 V** con su cable y enchufe. Funciona con el relé de 2 canales (2026-11-08).
 
-- [ ] **Opción 1 (recomendada): lámpara o tira LED USB de 5 V** + un **cable de extensión USB** para cortarle solo el cable rojo (+5 V) + un **power bank** o cargador de celular. Barata, segura y se ve bien.
-- [ ] **Opción 2: ventilador USB de 5 V** (misma conexión que la opción 1). Encaja como «confort» para el paciente.
-- [ ] **Opción 3 (plan original): foco LED de 12 V + adaptador de 12 V** (1 A basta) con su conector o bornera.
-
-**Conexión (cualquier opción):** el relé corta solo el cable **+** de la carga: un extremo a **COM**, el otro a **NO**; el cable − (GND) queda sin cortar. **Nunca usar 220 V.**
+**Conexión:** el relé corta **un solo conductor** del cable del foco (de preferencia la fase): un extremo a **COM**, el otro a **NO**; el otro conductor queda sin cortar. Cablear siempre con el cable desenchufado y dejar los bornes cubiertos (CHECKLIST, sección 5.1).
 
 ## Para la vincha y el dedo
 

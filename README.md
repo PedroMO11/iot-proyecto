@@ -22,7 +22,7 @@ Un prototipo de bajo costo para que una persona con movilidad reducida severa y 
 | 1 | Tengo hambre | — |
 | 2 | Hola | — |
 | 3 | Tengo sed | — |
-| 4 | Enciende la luz | Conmuta el relé (foco LED 12 V) |
+| 4 | Enciende la luz | Conmuta el relé (foco de 220 V) |
 | 5 | Llamar al cuidador | Activa el buzzer |
 | 6 | Siento dolor | — |
 
@@ -36,7 +36,7 @@ Un prototipo de bajo costo para que una persona con movilidad reducida severa y 
  USUARIO                      NODO ESP32-WROOM-32                 ACTUADORES
  ───────                      ───────────────────                 ──────────
  Sensor EMG (masetero) ──ADC1 GPIO34──┐                    ┌──Bluetooth A2DP──> Parlante BT
- MPU6050 (vincha)      ──I2C 0x68─────┤  Adquisición y     ├──GPIO26──> Relé ──> Foco LED 12 V
+ MPU6050 (vincha)      ──I2C 0x68─────┤  Adquisición y     ├──GPIO26──> Relé ──> Foco 220 V
  MAX30102 (dedo)       ──I2C 0x57─────┘  procesamiento     └──GPIO27──> Buzzer
                                                │
                                         WiFi 2,4 GHz (MQTT)
@@ -61,7 +61,7 @@ Un prototipo de bajo costo para que una persona con movilidad reducida severa y 
 | MPU6050 (GY-521) | Navegación con la cabeza | I2C 0x68 |
 | MAX30102 | Pulso y SpO₂ | I2C 0x57. Lecturas referenciales; no es un dispositivo médico. |
 | Parlante Bluetooth | Voz | Cualquiera que acepte A2DP |
-| Relé de 2 canales optoacoplado (bobina 5 V) | Foco LED 12 V | Se usa un canal: VCC a 5 V, IN directo a GPIO26, se activa con LOW |
+| Relé de 2 canales optoacoplado (bobina 5 V) | Foco de 220 V | Se usa un canal: VCC a 5 V, IN directo a GPIO26, se activa con LOW |
 | Buzzer activo de 2 patas | Alerta al cuidador | Directo al GPIO27, sin transistor: suena bien a 3,3 V |
 | Laptop | Broker, visión, menú, dashboard | |
 
@@ -265,7 +265,7 @@ Antes de nada, correr el **escáner I2C** ([03_escaner_i2c](firmware/pruebas/03_
 
 ### Paso 4: Actuadores
 Checklist: [sección 5](CHECKLIST_ARMADO.md#5-actuadores).
-- Al recibir `{"accion":"luz","estado":"toggle"}` → conmutar el relé en GPIO26. **Probar primero con un LED** y dejar el foco de 12 V para el final.
+- Al recibir `{"accion":"luz","estado":"toggle"}` → conmutar el relé en GPIO26. **Probar primero sin carga** y conectar el foco de 220 V al final, con el cable desenchufado y los bornes cubiertos (CHECKLIST, sección 5.1).
 - Al recibir `{"accion":"alerta"}` → buzzer en GPIO27 por 2 s.
 - Al recibir `{"accion":"frase","id":N}` → reproducir la frase N. Si N = 4, además conmutar la luz; si N = 5, además activar el buzzer.
 - ✅ Los tres comandos funcionan desde `mosquitto_pub`.
